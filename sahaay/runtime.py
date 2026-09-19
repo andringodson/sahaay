@@ -30,16 +30,27 @@ PROVIDER_LABELS = {
     "CPUExecutionProvider": "CPU",
 }
 
-# Devices we have validated against, used only for reporting.
-KNOWN_SNAPDRAGON_MARKERS = ("Snapdragon", "X Elite", "X Plus", "X2", "Oryon", "ARM64")
+
+def _short(provider: str) -> str:
+    return provider.replace("ExecutionProvider", "")
 
 
 def _import_ort():
-    """Import onnxruntime, preferring the QNN build.
+    """Import onnxruntime and register Qualcomm's plugin EP.
 
-    ``onnxruntime-qnn`` installs under the same ``onnxruntime`` module name,
-    so a plain import picks up whichever wheel is installed. We only need to
-    surface a clear error when neither is present.
+    This registration step is not optional and is easy to miss. Since
+    ONNX Runtime 1.23 the Qualcomm EP ships as a *plugin*: ``pip install
+    onnxruntime-qnn`` lays down a separate ``onnxruntime_qnn`` package
+    containing ``onnxruntime_providers_qnn.dll``, but onnxruntime does not
+    load it on its own. Until ``register_execution_provider_library`` is
+    called, ``get_available_providers()`` does not list QNN at all - so a
+    provider-priority list that simply looks for "QNNExecutionProvider"
+    silently falls through to CPU *on the Snapdragon device itself*, which
+    is the exact failure this project could not afford.
+
+    Verified locally: providers before registration were
+    ``['AzureExecutionProvider', 'CPUExecutionProvider']``; after, QNN is
+    present.
     """
     try:
         import onnxruntime as ort  # type: ignore
@@ -49,7 +60,77 @@ def _import_ort():
             "  pip install onnxruntime-qnn   (Windows, Python 3.11+)\n"
             "  pip install onnxruntime       (anything else)"
         ) from exc
+
+    _register_qnn_plugin(ort)
     return ort
+
+
+def _register_qnn_plugin(ort) -> str | None:  # noqa: ANN001
+    """Register the QNN plugin EP. Returns the QnnHtp.dll path, if any.
+
+    Safe to call repeatedly: re-registering the same name raises, and that
+    is not an error worth propagating.
+    """
+    if "QNNExecutionProvider" in ort.get_available_providers():
+        return _htp_path()
+
+    try:
+        import onnxruntime_qnn as oq  # type: ignore
+    except ImportError:
+        # Expected on non-Windows, or a plain onnxruntime install.
+        log.debug("onnxruntime-qnn not installed; NPU path unavailable")
+        return None
+
+    if not hasattr(ort, "register_execution_provider_library"):
+        log.warning(
+            "onnxruntime %s predates plugin execution providers; "
+            "upgrade to 1.23+ for Hexagon NPU support",
+            getattr(ort, "__version__", "?"),
+        )
+        return None
+
+    try:
+        ort.register_execution_provider_library(oq.get_ep_name(), oq.get_library_path())
+        log.info("registered %s from %s", oq.get_ep_name(), oq.get_library_path())
+    except Exception as exc:  # noqa: BLE001
+        log.warning("could not register the QNN execution provider: %s", exc)
+        return None
+    return _htp_path()
+
+
+def _htp_path() -> str | None:
+    """Full path to QnnHtp.dll.
+
+    Passing a bare "QnnHtp.dll" as backend_path relies on it being on PATH,
+    which it is not when it lives inside a site-packages wheel. The package
+    resolves the right amd64/arm64ec/arm64 subdirectory for us.
+    """
+    try:
+        import onnxruntime_qnn as oq  # type: ignore
+
+        path = oq.get_qnn_htp_path()
+        return path if Path(path).exists() else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _qnn_hardware_type(ort) -> str | None:  # noqa: ANN001
+    """What hardware the registered QNN provider is actually bound to.
+
+    Registering the plugin is not the same as having a Hexagon NPU. On an
+    x86 box the QNN provider registers happily and then reports hardware
+    type CPU. Reporting that as "NPU active" would be the kind of claim
+    this project is specifically trying not to make.
+    """
+    if not hasattr(ort, "get_ep_devices"):
+        return None
+    try:
+        for device in ort.get_ep_devices():
+            if device.ep_name == "QNNExecutionProvider":
+                return device.device.type.name  # 'NPU' | 'GPU' | 'CPU'
+    except Exception:  # noqa: BLE001
+        return None
+    return None
 
 
 @dataclass
@@ -65,6 +146,8 @@ class DeviceReport:
     is_arm64: bool
     npu_active: bool
     fallback_reason: str | None = None
+    # What ORT says the QNN provider is bound to: 'NPU', 'CPU', 'GPU' or None.
+    qnn_hardware: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -77,6 +160,7 @@ class DeviceReport:
             "is_arm64": self.is_arm64,
             "npu_active": self.npu_active,
             "fallback_reason": self.fallback_reason,
+            "qnn_hardware": self.qnn_hardware,
         }
 
     def summary(self) -> str:
@@ -97,21 +181,42 @@ class SessionFactory:
         self.cfg = cfg or RuntimeConfig()
         self._ort = _import_ort()
         self._available: list[str] = list(self._ort.get_available_providers())
+        self._qnn_hardware = _qnn_hardware_type(self._ort)
+        self._htp = _htp_path()
         self._chosen, self._reason = self._choose()
 
     # -- provider selection ------------------------------------------------
 
     def _choose(self) -> tuple[str, str | None]:
+        """Walk the priority list, recording *why* each rejection happened.
+
+        The reason string ends up in the UI and the benchmark header, so it
+        has to distinguish "not installed" from "installed but there is no
+        such hardware here" - they look identical from the provider list and
+        mean completely different things.
+        """
+        skipped: list[str] = []
+
         for candidate in self.cfg.provider_priority:
-            if candidate in self._available:
-                if candidate == self.cfg.provider_priority[0]:
-                    return candidate, None
-                missing = self.cfg.provider_priority[: self.cfg.provider_priority.index(candidate)]
-                return candidate, f"{', '.join(missing)} not available in this onnxruntime build"
-        return (
-            "CPUExecutionProvider",
-            f"none of {self.cfg.provider_priority} available; available: {self._available}",
-        )
+            if candidate not in self._available:
+                skipped.append(f"{_short(candidate)} not installed")
+                continue
+
+            # QNN registered but bound to CPU means no Hexagon on this box.
+            # Using it anyway would be slower than the plain CPU provider and
+            # would let the UI claim an NPU that is not there.
+            if candidate == "QNNExecutionProvider" and self._qnn_hardware not in (None, "NPU"):
+                log.info("QNN provider is bound to %s, not NPU; skipping it", self._qnn_hardware)
+                skipped.append(
+                    f"QNN present but bound to {self._qnn_hardware}, so there is no Hexagon NPU here"
+                )
+                continue
+
+            if not skipped:
+                return candidate, None
+            return candidate, "; ".join(skipped)
+
+        return "CPUExecutionProvider", "; ".join(skipped) or "no accelerated provider available"
 
     def _provider_options(self, provider: str) -> dict[str, Any]:
         """Per-provider tuning.
@@ -125,7 +230,9 @@ class SessionFactory:
                 # QnnHtp.dll targets the Hexagon Tensor Processor. Swapping
                 # this for QnnCpu.dll is a useful A/B when debugging accuracy
                 # differences between the NPU and reference execution.
-                "backend_path": "QnnHtp.dll",
+                # Full path, not a bare filename: the DLL lives inside the
+                # onnxruntime_qnn wheel and is not on PATH.
+                "backend_path": self._htp or "QnnHtp.dll",
                 "htp_performance_mode": self.cfg.htp_performance_mode,
                 "htp_graph_finalization_optimization_mode": (
                     self.cfg.htp_graph_finalization_optimization_mode
@@ -150,7 +257,12 @@ class SessionFactory:
 
     @property
     def npu_active(self) -> bool:
-        return self._chosen == "QNNExecutionProvider"
+        """True only when work really lands on a Hexagon NPU.
+
+        Deliberately stricter than "the QNN provider was selected": see
+        :func:`_qnn_hardware_type`.
+        """
+        return self._chosen == "QNNExecutionProvider" and self._qnn_hardware in (None, "NPU")
 
     def report(self) -> DeviceReport:
         machine = platform.machine()
@@ -164,6 +276,7 @@ class SessionFactory:
             is_arm64=machine.lower() in {"arm64", "aarch64"},
             npu_active=self.npu_active,
             fallback_reason=self._reason,
+            qnn_hardware=self._qnn_hardware,
         )
 
     def create(self, model_path: str | Path, *, provider: str | None = None):

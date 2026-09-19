@@ -33,7 +33,9 @@ def _print_device() -> int:
     from .runtime import SessionFactory
 
     try:
-        report = SessionFactory().report()
+        # Use the real config so SAHAAY_PROVIDER is honoured here too -
+        # otherwise `--device` reports something the app would not do.
+        report = SessionFactory(load_config().runtime).report()
     except RuntimeError as exc:
         print(exc)
         return 1
