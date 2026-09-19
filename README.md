@@ -170,6 +170,8 @@ expected transcript is known in advance, rather than judged by ear.
 | Llama → glossary | real Hindi explanations of code-mixed terms, 24 tok/s on CPU int4 |
 | Llama → notes + quiz | structured Topics / Key points, and real Q&A pairs |
 | Full pipeline | audio in → captions → translation → glossary → saved notes |
+| **Accuracy** | **0.0% WER** on English, **14/14 technical terms kept** — [docs/ACCURACY.md](docs/ACCURACY.md) |
+| **Concurrency** | glossary costs captions **7×** on CPU — [docs/CONCURRENCY.md](docs/CONCURRENCY.md) |
 | Local web server | real models load, EP badge live, WebSocket feed correct |
 
 Example, straight out of the run:
@@ -187,7 +189,9 @@ via Qualcomm's device farm — see the table above and [docs/AIHUB.md](docs/AIHU
 physical Snapdragon PC. Individual graphs were profiled there, but wall-clock
 numbers for the whole pipeline come from the x86 machine, and
 [docs/BENCHMARKS.md](docs/BENCHMARKS.md) says so on every row. Word error rate
-is also not measured — that needs a labelled code-mixed corpus. The glossary was
+is measured, but against **synthesised** speech ([docs/ACCURACY.md](docs/ACCURACY.md)) —
+real-speaker accuracy needs a labelled code-mixed corpus and is still unknown.
+The glossary was
 validated with Llama 3.2 **1B**; the 3B is the shipping target and uses an
 identical GenAI format, but produces better content than the numbers here show.
 

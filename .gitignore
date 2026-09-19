@@ -19,3 +19,6 @@ sessions/
 bench_results/*.json
 .pytest_cache/
 .DS_Store
+
+# Generated test audio (SAPI); regenerate with scripts/accuracy.py
+testaudio/
