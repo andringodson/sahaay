@@ -26,7 +26,7 @@ from . import bus as ev
 from .asr import create_asr
 from .audio import create_source
 from .bus import EventBus
-from .config import Config, resolve_model_id
+from .config import Config
 from .glossary import GlossaryWorker, GlossEntry
 from .llm import create_llm
 from .metrics import Metrics
@@ -107,8 +107,9 @@ class Pipeline:
         self.bus.publish(ev.STATUS, stage="loading", detail="language model", **self.status())
         llm = create_llm(
             models,
-            resolve_model_id(models, self.cfg.glossary.model_id, self.cfg.glossary.candidates),
+            self.cfg.glossary.model_id,
             mock=self.cfg.mock,
+            candidates=self.cfg.glossary.candidates,
         )
 
         self._glossary = GlossaryWorker(

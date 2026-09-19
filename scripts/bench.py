@@ -162,7 +162,9 @@ def bench_provider(provider: str | None, runs: int, warmup: int) -> tuple[list[R
 
     # llm
     try:
-        llm = create_llm(cfg.models_dir, cfg.glossary.model_id)
+        llm = create_llm(
+            cfg.models_dir, cfg.glossary.model_id, candidates=cfg.glossary.candidates
+        )
         if llm.name == "heuristic":
             print("     llm          skipped (weights not downloaded)")
         else:

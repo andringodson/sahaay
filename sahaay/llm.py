@@ -21,6 +21,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from .config import resolve_model_id
+
 log = logging.getLogger(__name__)
 
 
@@ -273,11 +275,25 @@ def find_genai_model(root: Path) -> Path | None:
     return candidates[0]
 
 
-def create_llm(models_dir: Path, model_id: str, mock: bool = False) -> LlmBackend:
-    """Walk the degradation ladder and return the best backend available."""
+def create_llm(
+    models_dir: Path,
+    model_id: str,
+    mock: bool = False,
+    candidates: list[str] | None = None,
+) -> LlmBackend:
+    """Walk the degradation ladder and return the best backend available.
+
+    Resolution happens here rather than in each caller. It used to be the
+    caller's job, and the benchmark harness duly passed the literal string
+    "auto" straight through, so the LLM stage silently reported "weights not
+    downloaded" while the model sat on disk.
+    """
     if mock:
         log.info("LLM: heuristic backend (mock mode)")
         return HeuristicLlm()
+
+    if model_id == "auto" or not model_id:
+        model_id = resolve_model_id(models_dir, model_id, candidates or [])
 
     model_dir = find_genai_model(models_dir / model_id)
     if model_dir is not None:

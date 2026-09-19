@@ -49,16 +49,37 @@ DEFAULT_DEVICES = [
 # Fixed shapes for compilation, keyed by a substring of the file name.
 # These are the shapes Sahaay feeds at runtime, not arbitrary ones: the mel
 # front end always produces (1, 80, 3000), and Silero always sees 512 samples.
-INPUT_SPECS: dict[str, dict] = {
-    "encoder_model": {"input_features": ((1, 80, N_FRAMES), "float32")},
-    "silero": {
-        "input": ((1, 512), "float32"),
-        "state": ((2, 1, 128), "float32"),
-        # Silero declares `sr` as a rank-0 scalar. Passing (1,) here is
-        # rejected outright: "does not match shapes inferred from the model".
-        "sr": ((), "int64"),
-    },
-}
+# A caption line is short. 64 tokens covers a full sentence of lecture
+# speech with room to spare, and fixing it is what lets the compiler plan.
+NLLB_TOKENS = 64
+
+# Keys are matched against the whole path, most specific first. Keying on the
+# file name alone was wrong: "encoder_model" matches both Whisper's
+# `encoder_model.onnx` and NLLB's `encoder_model_int8.onnx`, so NLLB was
+# handed Whisper's mel input and the compile failed with a shape mismatch.
+INPUT_SPECS: list[tuple[str, dict]] = [
+    (
+        "nllb",
+        {
+            "input_ids": ((1, NLLB_TOKENS), "int64"),
+            "attention_mask": ((1, NLLB_TOKENS), "int64"),
+        },
+    ),
+    (
+        "whisper",
+        {"input_features": ((1, 80, N_FRAMES), "float32")},
+    ),
+    (
+        "silero",
+        {
+            "input": ((1, 512), "float32"),
+            "state": ((2, 1, 128), "float32"),
+            # Silero declares `sr` as a rank-0 scalar. Passing (1,) here is
+            # rejected outright: "does not match shapes inferred from the model".
+            "sr": ((), "int64"),
+        },
+    ),
+]
 
 # Graphs we deliberately do not profile, and why. Stating this is better than
 # quietly omitting them.
@@ -74,21 +95,35 @@ SKIP = {
         "the HTP costs more in transfer than it saves in compute. AI Hub also "
         "rejects its recurrent graph during shape inference"
     ),
+    "llama": (
+        "an autoregressive LLM with a KV cache, for the same reason as the "
+        "seq2seq decoders. ONNX Runtime GenAI owns its execution, and its "
+        "throughput is reported as tokens/sec by scripts/bench.py"
+    ),
 }
 
 
 def spec_for(path: Path) -> dict | None:
-    name = path.name.lower()
-    for key, spec in INPUT_SPECS.items():
-        if key in name or key in str(path.parent).lower():
+    """Fixed input shapes for this graph, matched by model family."""
+    haystack = str(path).replace("\\", "/").lower()
+    for key, spec in INPUT_SPECS:
+        if key in haystack:
             return spec
     return None
 
 
 def skip_reason(path: Path) -> str | None:
-    name = path.name.lower()
+    """Why this graph is not profiled, if it is not.
+
+    Matches the whole path, not just the file name. Several repos ship a
+    plain ``model.onnx``, so keying on the name alone meant Silero was never
+    matched and got submitted three times to fail three times. Result rows
+    are family-qualified (``silero_vad/model.onnx``) for the same reason,
+    which also lets ``--from-json`` filter them correctly.
+    """
+    haystack = str(path).replace("\\", "/").lower()
     for key, why in SKIP.items():
-        if key in name:
+        if key in haystack:
             return why
     return None
 
