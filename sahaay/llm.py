@@ -114,6 +114,15 @@ _STOPWORDS = {
     "lecture", "chapter", "question", "answer", "example", "problem", "let",
     "remember", "okay", "right", "so", "we", "will", "can", "you", "your",
     "our", "here", "there", "when", "then", "also", "very", "just", "like",
+    # Academic register that passes the -tion/-ity morphology test but that
+    # no student needs defined. Without these the sidebar fills with
+    # "solution", "equation", "function" and reads as broken.
+    "solution", "equation", "function", "section", "direction", "condition",
+    "position", "operation", "information", "situation", "definition",
+    "explanation", "application", "calculation", "relation", "notation",
+    "attention", "discussion", "conclusion", "expression", "assumption",
+    "important", "different", "following", "because", "therefore",
+    "something", "everything", "understand", "basically", "actually",
 }
 
 # Seeded with the STEM vocabulary an Indian engineering syllabus actually
@@ -170,15 +179,16 @@ class HeuristicLlm(LlmBackend):
             key = word.lower().strip("-")
             if key in _STOPWORDS or key in found:
                 continue
-            if key in _SEED_GLOSSARY:
-                found.append(key)
-            elif self._looks_technical(key):
+            # Known terms first. Unknown ones only clear the bar if the
+            # morphology is strongly scientific - a wrong entry costs more
+            # credibility than a missing one costs coverage.
+            if key in _SEED_GLOSSARY or self._looks_technical(key):
                 found.append(key)
             if len(found) >= 3:
                 break
 
         lines = [
-            f"{term} :: {_SEED_GLOSSARY.get(term, 'Domain term used in this lecture.')}"
+            f"{term} :: {_SEED_GLOSSARY.get(term, 'Technical term from this lecture - install the language model for a full explanation.')}"
             for term in found
         ]
         return LlmResult(
@@ -190,12 +200,17 @@ class HeuristicLlm(LlmBackend):
 
     @staticmethod
     def _looks_technical(word: str) -> bool:
-        """Latin/Greek scientific morphology - cheap but surprisingly precise."""
+        """Latin/Greek scientific morphology.
+
+        Only the suffixes that are almost exclusively scientific. ``-tion``
+        and ``-ity`` are deliberately excluded: they match far more ordinary
+        prose than jargon, and precision matters more than recall here.
+        """
         suffixes = (
-            "tion", "sion", "ence", "ance", "ity", "ism", "osis", "itis",
-            "ology", "ometry", "onomy", "genesis", "phobia", "lysis",
+            "osis", "itis", "ology", "ometry", "onomy", "genesis", "lysis",
+            "phobia", "otype", "plasm", "hedron", "morphism", "ization",
         )
-        return len(word) >= 8 and word.endswith(suffixes)
+        return len(word) >= 9 and word.endswith(suffixes)
 
 
 def create_llm(models_dir: Path, model_id: str, mock: bool = False) -> LlmBackend:

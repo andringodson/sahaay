@@ -210,6 +210,54 @@ class SessionFactory:
         return sess
 
 
+class NullSessionFactory:
+    """Stand-in used by ``--mock`` when onnxruntime is not installed at all.
+
+    Mock mode exists so the UI, the event plumbing and the notes writer can
+    be demoed on a machine with nothing downloaded. Requiring a 200 MB
+    runtime just to see the interface would defeat that.
+    """
+
+    def __init__(self, cfg: RuntimeConfig | None = None):
+        self.cfg = cfg or RuntimeConfig()
+
+    @property
+    def provider(self) -> str:
+        return "MockProvider"
+
+    @property
+    def npu_active(self) -> bool:
+        return False
+
+    def report(self) -> DeviceReport:
+        machine = platform.machine()
+        return DeviceReport(
+            provider="MockProvider",
+            provider_label="Mock (no inference)",
+            available_providers=[],
+            ort_version="not installed",
+            machine=machine,
+            processor=platform.processor() or "unknown",
+            is_arm64=machine.lower() in {"arm64", "aarch64"},
+            npu_active=False,
+            fallback_reason="running with --mock; no models are executed",
+        )
+
+    def create(self, model_path: str | Path, *, provider: str | None = None):
+        raise RuntimeError("NullSessionFactory cannot create sessions (mock mode)")
+
+
+def create_factory(cfg: RuntimeConfig | None = None, mock: bool = False):
+    """Build the real factory, or a null one if mock mode has no runtime."""
+    try:
+        return SessionFactory(cfg)
+    except RuntimeError:
+        if mock:
+            log.warning("onnxruntime not installed; mock mode will not run models")
+            return NullSessionFactory(cfg)
+        raise
+
+
 def describe_device() -> DeviceReport:
     """Convenience for scripts and the ``--device`` CLI flag."""
     return SessionFactory().report()
