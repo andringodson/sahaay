@@ -30,9 +30,18 @@ Nothing leaves the device. There is no account, no API key, and no network call 
 
 ## Why this needs an NPU
 
-This is the part that makes it a Snapdragon application rather than a Python app that happens to run on one.
+This is the part that makes it a Snapdragon application rather than a Python app that happens to run on one — and it is measured, not asserted.
 
-Sahaay runs **two models concurrently and continuously for the length of a lecture**: Whisper transcribing every few seconds, and Llama 3.2 3B generating glossary entries alongside it. On a CPU that either starves the captions or flattens the battery in an hour. On the Hexagon NPU both graphs stay resident, and the glossary costs the user nothing they notice.
+Sahaay runs **two models concurrently and continuously for the length of a lecture**: Whisper transcribing every few seconds, and Llama 3.2 generating glossary entries alongside it. Here is what the second one costs the first, on a CPU:
+
+| Whisper latency | Mean | p95 | Real-time factor |
+|---|---:|---:|---:|
+| Glossary idle | 343.7 ms | 374.3 ms | 0.043 |
+| **Glossary running** | **2390.7 ms** | 3063.9 ms | **0.299** |
+
+**Captions get 7× slower.** Not a tuning problem — two compute-bound models on one set of cores, and the captions the user is reading in real time are what loses.
+
+On a Snapdragon PC the Whisper encoder runs on the Hexagon NPU instead: [13.5 ms on X2 Elite, 129 of 129 layers on the NPU](docs/AIHUB.md). The two models sit on separate silicon and the contention above disappears. Method and full numbers in [docs/CONCURRENCY.md](docs/CONCURRENCY.md).
 
 A one-hour lecture, every day, for every student, is also precisely the workload that is absurd to send to the cloud — and precisely what a 45 TOPS NPU sitting idle in a laptop is for.
 

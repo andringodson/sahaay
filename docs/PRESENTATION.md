@@ -41,15 +41,27 @@ engineering education.
 Live, not a video-in-a-video if you can avoid it. See the script below.
 
 ### 5 — Why this needs an NPU *(Technical)*
-The one slide that has to land.
+The one slide that has to land, and it is a measurement, not a claim.
 
-Two models run **concurrently and continuously for a whole lecture**: Whisper
-transcribing every few seconds, Llama 3.2 3B writing glossary entries
-alongside it. On CPU that starves the captions or flattens the battery. On
-Hexagon both graphs stay resident.
+| Whisper latency | Mean | Real-time factor |
+|---|---:|---:|
+| Glossary idle | 344 ms | 0.043 |
+| **Glossary running** | **2391 ms** | **0.299** |
+
+Say it plainly: **turning on the glossary makes captions seven times slower
+on a CPU.** Two compute-bound models, one set of cores, and the thing the
+user is reading in real time is what loses.
+
+That is the whole argument. The NPU is not a performance nicety here — it is
+what makes the second model possible at all. On Snapdragon the encoder moves
+to Hexagon (13.5 ms, 129/129 layers) and the two models stop competing.
+
+If someone asks "why not just use a smaller model?" — because the glossary is
+the feature, and a smaller model writes worse explanations. The NPU is how
+you keep both.
 
 A one-hour lecture, daily, per student is also exactly the workload that is
-absurd to send to the cloud — and exactly what an idle 45 TOPS NPU is for.
+absurd to send to the cloud.
 
 ### 6 — Architecture *(Technical)*
 Use the diagram from the README. Spend your time on one point: three threads,
