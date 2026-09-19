@@ -125,6 +125,7 @@ Details in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | ASR (portable) | Whisper Small / Tiny | int8 / fp32 | [onnx-community](https://huggingface.co/onnx-community) — the x86 fallback these tests ran on |
 | Translation | NLLB-200 distilled 600M | int8 | [Xenova/nllb-200-distilled-600M](https://huggingface.co/Xenova/nllb-200-distilled-600M) |
 | Glossary + notes | Llama 3.2 3B Instruct | Hexagon assets | [onnx-community/Llama-3.2-3B-instruct-hexagon-npu-assets](https://huggingface.co/onnx-community/Llama-3.2-3B-instruct-hexagon-npu-assets) |
+| Glossary (portable) | Llama 3.2 3B / 1B Instruct | int4 | [GENAI-ONNX builds](https://huggingface.co/onnx-community/Llama-3.2-3B-Instruct-GENAI-ONNX) — ship `genai_config.json`, which plain ONNX exports do not |
 
 No weights are vendored. `scripts/download_models.py --auto` picks the Snapdragon or portable tier by architecture.
 
@@ -157,6 +158,8 @@ expected transcript is known in advance, rather than judged by ear.
 | Whisper → transcript | **word-for-word correct** on all three sentences |
 | NLLB → Hindi/Tamil/Telugu/Malayalam | fluent output in all four |
 | Term protection | `eigenvalues`, `eigenvectors`, `determinant`, `SVD`, `backpropagation` **survive in Latin script inside a Devanagari sentence** |
+| Llama → glossary | real Hindi explanations of code-mixed terms, 24 tok/s on CPU int4 |
+| Llama → notes + quiz | structured Topics / Key points, and real Q&A pairs |
 | Full pipeline | audio in → captions → translation → glossary → saved notes |
 | Local web server | real models load, EP badge live, WebSocket feed correct |
 
@@ -208,7 +211,7 @@ The primary user may be reading the lecture rather than hearing it, so this is t
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File install.ps1 -Dev
-.\.venv\Scripts\python.exe -m pytest        # 127 tests, no weights required
+.\.venv\Scripts\python.exe -m pytest        # 145 tests, no weights required
 ```
 
 ```

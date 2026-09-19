@@ -15,15 +15,15 @@ on the machine described below - none are copied from a datasheet.
 
 | Stage | Provider | Runs | Mean | p50 | p95 | Min | Notes |
 |---|---|---:|---:|---:|---:|---:|---|
-| mel (CPU) | CPU | 6 | 25.1 ms | 19.5 ms | 49.5 ms | 17.7 ms |  |
-| asr | CPU | 6 | 411.4 ms | 456.4 ms | 463.2 ms | 351.5 ms | RTF 0.051, 8.0s audio |
-| translate | CPU | 6 | 4070.7 ms | 4066.3 ms | 4114.1 ms | 4043.5 ms |  |
+| mel (CPU) | CPU | 5 | 27.9 ms | 32.1 ms | 37.0 ms | 17.1 ms |  |
+| asr | CPU | 5 | 305.1 ms | 316.7 ms | 332.8 ms | 267.6 ms | RTF 0.038, 8.0s audio |
+| llm (glossary) | CPU | 3 | 2595.4 ms | 2581.6 ms | 2626.7 ms | 2578.1 ms | 24.4 tok/s |
 
 ## Observations
 
-- **Slowest stage: `translate` at 4071 ms mean (4114 ms p95) on CPU.**
-- Speech recognition runs at RTF 0.051, comfortably faster than real time.
-- Translation is the bottleneck here (4071 ms per caption). Segments are 1-12 s, so the pipeline still keeps up, but this is the stage that most needs the NPU - it is a 600M encoder-decoder doing autoregressive decoding, and on CPU that dominates everything else.
+- **Slowest stage: `llm (glossary)` at 2595 ms mean (2627 ms p95) on CPU.**
+- Speech recognition runs at RTF 0.038, comfortably faster than real time.
+- The glossary LLM generates 24.4 tok/s, running concurrently with transcription.
 
 ## How to read this
 

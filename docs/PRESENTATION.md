@@ -57,11 +57,23 @@ and both queues drop the **oldest** item under pressure, because a caption
 four minutes late is worse than no caption.
 
 ### 7 — Proof it is on the NPU *(Technical)*
-Screenshot of `--device` on the target hardware next to `docs/BENCHMARKS.md`.
+This is the slide with the receipts. Put the table up and let it speak:
 
-Then say the thing that makes it credible: **it reports "no" when the answer
-is no.** Show the x86 output too. A tool that only ever reports success is
-not evidence.
+| Whisper encoder | On-device | Layers on NPU |
+|---|---:|---:|
+| Snapdragon X Elite | **27.48 ms** | **129 / 129** |
+| Snapdragon X2 Elite | **13.5 ms** | **129 / 129** |
+
+Say the two things that matter:
+
+1. **129 out of 129 layers ran on the Hexagon NPU.** Not "targeted the NPU" —
+   Qualcomm's own profiler reports zero CPU fallback for the entire graph.
+2. **These are public job links.** Anyone can open them and check. Have
+   `docs/AIHUB.md` on screen with the URLs visible.
+
+Then the credibility beat: **the tool reports "no" when the answer is no.**
+Show `--device` on the x86 machine printing `Hexagon NPU active : no`. A tool
+that only ever reports success is not evidence of anything.
 
 ### 8 — Engineering honesty *(Technical, Documentation)*
 The QNN plugin registration trap, in one slide (see `docs/HARDWARE.md`):
@@ -83,7 +95,7 @@ works.
 ### 9 — Deployment *(Deployment & Accessibility)*
 - `install.ps1` → `run.bat`. No Node, no build step, no Docker
 - Degrades on every stage rather than failing; `--mock` runs with nothing downloaded
-- 127 tests, CI on Windows and Linux, no weights or audio device needed
+- 145 tests, CI on Windows and Linux, no weights or audio device needed
 - Accessibility: resizable captions, `aria-live`, reduced-motion, full keyboard control
 - Privacy: binds to `127.0.0.1`, no telemetry, no accounts, audio never written to disk
 
