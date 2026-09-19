@@ -1,0 +1,28 @@
+# Core runtime -------------------------------------------------------------
+# onnxruntime-qnn ships prebuilt wheels for Windows ARM64 *and* x64 (py>=3.11),
+# so the same import works on a Snapdragon HP PC and on an x86 dev box.
+# install.ps1 picks this when possible and falls back to stock onnxruntime.
+onnxruntime-qnn>=2.5.0 ; platform_system == "Windows" and python_version >= "3.11"
+onnxruntime>=1.20.0 ; python_version < "3.11"
+
+numpy>=1.24
+huggingface-hub>=0.26
+
+# Audio capture ------------------------------------------------------------
+# pyaudiowpatch adds WASAPI loopback (system audio) on top of PyAudio.
+pyaudiowpatch>=0.2.12 ; platform_system == "Windows"
+sounddevice>=0.4.6 ; platform_system != "Windows"
+soundfile>=0.12
+
+# Tokenisers / text --------------------------------------------------------
+tokenizers>=0.20
+sentencepiece>=0.2.0
+
+# UI server ----------------------------------------------------------------
+fastapi>=0.115
+uvicorn>=0.32
+websockets>=13.0
+jinja2>=3.1
+
+# CLI / util ---------------------------------------------------------------
+rich>=13.7

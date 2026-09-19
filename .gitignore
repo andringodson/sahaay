@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# Model weights are large and license-gated: never commit them.
+models/
+*.onnx
+*.onnx.data
+*.bin
+*.gguf
+*.dlc
+
+# Runtime output
+sessions/
+*.log
+bench_results/*.json
+.pytest_cache/
+.DS_Store

@@ -1,0 +1,8 @@
+-r requirements.txt
+
+pytest>=8.0
+pytest-asyncio>=0.24
+
+# Only needed to submit profile/inference jobs to the Qualcomm AI Hub
+# device farm (scripts/aihub_profile.py). Not required to run the app.
+qai-hub>=0.23.0
