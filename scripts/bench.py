@@ -37,7 +37,7 @@ import numpy as np
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from sahaay.config import SUPPORTED_LANGUAGES, load_config  # noqa: E402
+from sahaay.config import load_config  # noqa: E402
 from sahaay.features import log_mel_spectrogram  # noqa: E402
 
 BENCH_AUDIO_SECONDS = 8.0

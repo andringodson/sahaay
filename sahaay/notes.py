@@ -156,7 +156,13 @@ class NotesWriter:
         # than the middle for a summary.
         excerpt = self._excerpt(transcript)
 
-        if self.cfg.enabled:
+        # The heuristic backend extracts terms; it cannot summarise or write
+        # questions. Feeding it the summary prompt returns glossary lines,
+        # which would render as a "summary" that just repeats the glossary
+        # section below it. Go straight to the structured fallback instead.
+        can_summarise = self.cfg.enabled and getattr(self.llm, "name", "") != "heuristic"
+
+        if can_summarise:
             try:
                 notes.summary_markdown = self._clean(
                     self.llm.generate(SUMMARY_PROMPT.format(transcript=excerpt), max_new_tokens=420).text

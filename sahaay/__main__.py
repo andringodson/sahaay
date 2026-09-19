@@ -11,12 +11,28 @@ Three modes, because they serve three different audiences:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import logging
 import signal
 import sys
 import time
 
 from .config import SUPPORTED_LANGUAGES, load_config
+
+
+def _force_utf8_console() -> None:
+    """Make stdout survive Devanagari, Tamil and Malayalam.
+
+    A Windows console defaults to cp1252, and printing a Hindi translation
+    to it raises UnicodeEncodeError - which would crash --cli mode the
+    moment the first translated caption arrived. Reconfiguring is safe:
+    anything that cannot be represented is replaced rather than fatal.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        # AttributeError: not a real stream (pytest capture, a pipe).
+        # ValueError: already detached.
+        with contextlib.suppress(AttributeError, ValueError):
+            stream.reconfigure(encoding="utf-8", errors="replace")
 
 
 def _setup_logging(verbose: bool) -> None:
@@ -127,6 +143,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
 
+    _force_utf8_console()
     _setup_logging(args.verbose)
 
     if args.device:

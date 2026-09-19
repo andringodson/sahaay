@@ -146,7 +146,7 @@ class WhisperAsr:
         feeds = {name: mel[None, ...].astype(np.float32)}
         outs = self.encoder.run(None, feeds)
         names = [o.name for o in self.encoder.get_outputs()]
-        return dict(zip(names, outs))
+        return dict(zip(names, outs, strict=True))
 
     def _initial_tokens(self, language: str | None) -> list[int]:
         if self.tokenizer is None:
@@ -188,7 +188,7 @@ class WhisperAsr:
                     cross_feeds = {cand: first}
                     break
 
-        for step in range(self.cfg.max_decode_tokens):
+        for _step in range(self.cfg.max_decode_tokens):
             feeds: dict[str, np.ndarray] = dict(cross_feeds)
 
             token_input = self._pick(["input_ids", "tokens", "x"])

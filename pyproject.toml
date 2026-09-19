@@ -67,4 +67,10 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]
-ignore = ["E501"]
+ignore = [
+  "E501",
+  # SIM108 wants a ternary for the pad-or-trim branch in features.py.
+  # Two named branches doing opposite things read better than one long
+  # conditional expression, especially in DSP code.
+  "SIM108",
+]

@@ -14,11 +14,11 @@ sentence, a cold graph) absorb into the queue instead of gapping the audio.
 
 from __future__ import annotations
 
+import contextlib
 import datetime as dt
 import logging
 import queue
 import threading
-from pathlib import Path
 
 import numpy as np
 
@@ -155,18 +155,15 @@ class Pipeline:
         if self._source:
             self._source.stop()
 
-        # Flush any half-finished sentence before tearing down.
+        # Flush any half-finished sentence before tearing down: pressing Stop
+        # mid-sentence must not lose the sentence.
         tail = self._segmenter.finalize() if self._segmenter else None
         if tail is not None:
-            try:
+            with contextlib.suppress(queue.Full):
                 self._segments.put_nowait(tail)
-            except queue.Full:
-                pass
 
-        try:
+        with contextlib.suppress(queue.Full):
             self._segments.put_nowait(None)  # sentinel
-        except queue.Full:
-            pass
 
         for t in self._threads:
             t.join(timeout=5.0)
