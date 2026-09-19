@@ -122,6 +122,7 @@ Details in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 |---|---|---|---|
 | VAD | Silero VAD | fp32 | [onnx-community/silero-vad](https://huggingface.co/onnx-community/silero-vad) |
 | ASR | Whisper Small | w8a16 | [qualcomm/Whisper-Small-Quantized](https://huggingface.co/qualcomm/Whisper-Small-Quantized) — Qualcomm AI Hub, validated on Snapdragon X Elite |
+| ASR (portable) | Whisper Small / Tiny | int8 / fp32 | [onnx-community](https://huggingface.co/onnx-community) — the x86 fallback these tests ran on |
 | Translation | NLLB-200 distilled 600M | int8 | [Xenova/nllb-200-distilled-600M](https://huggingface.co/Xenova/nllb-200-distilled-600M) |
 | Glossary + notes | Llama 3.2 3B Instruct | Hexagon assets | [onnx-community/Llama-3.2-3B-instruct-hexagon-npu-assets](https://huggingface.co/onnx-community/Llama-3.2-3B-instruct-hexagon-npu-assets) |
 
@@ -140,6 +141,39 @@ Every stage has a fallback, so the app is reviewable on any machine:
 | Everything | `--mock` runs the full pipeline on a scripted transcript |
 
 The UI never claims a capability it does not have. A passthrough translation says so rather than showing English text under a Hindi heading.
+
+## What has actually been verified
+
+Claims in a hackathon README are cheap, so here is exactly what was run, and
+on what.
+
+The pipeline was tested end to end against **real model weights** and **real
+speech** with known ground truth — audio generated via Windows SAPI so the
+expected transcript is known in advance, rather than judged by ear.
+
+| Stage | Result |
+|---|---|
+| Silero VAD → segmentation | 3 spoken sentences → **exactly 3 segments**, boundaries correct |
+| Whisper → transcript | **word-for-word correct** on all three sentences |
+| NLLB → Hindi/Tamil/Telugu/Malayalam | fluent output in all four |
+| Term protection | `eigenvalues`, `eigenvectors`, `determinant`, `SVD`, `backpropagation` **survive in Latin script inside a Devanagari sentence** |
+| Full pipeline | audio in → captions → translation → glossary → saved notes |
+| Local web server | real models load, EP badge live, WebSocket feed correct |
+
+Example, straight out of the run:
+
+```
+CAPTION: So today we will start with eigenvalues and eigenvectors.
+     HI: तो आज हम eigenvalues और eigenvectors के साथ शुरू करेंगे।
+   kept: ['eigenvalues', 'eigenvectors']
+```
+
+**What has *not* been verified:** execution on real Snapdragon hardware. This
+was built on an x86 machine, so every number in
+[docs/BENCHMARKS.md](docs/BENCHMARKS.md) is the CPU fallback path and says so.
+The QNN registration, provider selection and fallback logic are all exercised
+locally; what is missing is the Hexagon NPU itself. Word error rate is also
+not measured — that needs a labelled code-mixed corpus.
 
 ## Performance
 
@@ -174,7 +208,7 @@ The primary user may be reading the lecture rather than hearing it, so this is t
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File install.ps1 -Dev
-.\.venv\Scripts\python.exe -m pytest        # 98 tests, no weights required
+.\.venv\Scripts\python.exe -m pytest        # 127 tests, no weights required
 ```
 
 ```

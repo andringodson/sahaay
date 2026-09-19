@@ -72,10 +72,18 @@ the Snapdragon device itself.
 This slide is worth more than another feature. It shows you measured rather
 than assumed, and every judge on a Qualcomm panel has hit this.
 
+If you have time for a second beat, the term-protection bug is the better
+story because it is about the *product*, not the plumbing: protection was
+wired up but never seeded, so Telugu translated "eigenvalues" into "self
+values" — the exact failure the feature exists to prevent. It was only
+caught by running real weights against speech with known ground truth.
+The lesson lands: a feature that exists in the code is not a feature that
+works.
+
 ### 9 — Deployment *(Deployment & Accessibility)*
 - `install.ps1` → `run.bat`. No Node, no build step, no Docker
 - Degrades on every stage rather than failing; `--mock` runs with nothing downloaded
-- 98 tests, CI on Windows and Linux, no weights or audio device needed
+- 127 tests, CI on Windows and Linux, no weights or audio device needed
 - Accessibility: resizable captions, `aria-live`, reduced-motion, full keyboard control
 - Privacy: binds to `127.0.0.1`, no telemetry, no accounts, audio never written to disk
 
