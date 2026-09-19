@@ -158,6 +158,21 @@ class GlossaryWorker:
             if len(self._seen) >= self.cfg.max_terms_per_session:
                 break
 
+    # Separators seen in real output. The prompt asks for "::", but adding a
+    # repetition penalty - needed to stop small models looping - makes the
+    # model avoid the repeated "::" token and switch to "-" instead. Depending
+    # on one separator meant a whole batch of perfectly good glosses parsed
+    # as zero entries.
+    _SEPARATORS = ("::", " - ", " – ", " — ", ": ")
+
+    @classmethod
+    def _split_entry(cls, line: str) -> tuple[str, str] | None:
+        for sep in cls._SEPARATORS:
+            if sep in line:
+                term, _, explanation = line.partition(sep)
+                return term, explanation
+        return None
+
     def _parse(self, text: str, source_line: str) -> list[GlossEntry]:
         out: list[GlossEntry] = []
         if not text or text.strip().upper().startswith("NONE"):
@@ -165,9 +180,12 @@ class GlossaryWorker:
 
         for raw in text.splitlines():
             raw = raw.strip()
-            if not raw or "::" not in raw:
+            if not raw:
                 continue
-            term, _, explanation = raw.partition("::")
+            split = self._split_entry(raw)
+            if split is None:
+                continue
+            term, explanation = split
             # Models like to prefix list items; strip the decoration.
             term = re.sub(r"^[\-\*\d\.\)\s]+", "", term).strip().strip('"*')
             explanation = explanation.strip().strip('"')

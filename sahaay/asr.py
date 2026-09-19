@@ -27,7 +27,7 @@ from typing import Any
 
 import numpy as np
 
-from .config import AsrConfig
+from .config import AsrConfig, resolve_model_id
 from .features import log_mel_spectrogram
 from .kvcache import CACHE_FLAG, MergedDecoderCache
 from .runtime import SessionFactory
@@ -375,4 +375,6 @@ class MockAsr:
 def create_asr(models_dir: Path, factory: SessionFactory, cfg: AsrConfig, mock: bool = False):
     if mock:
         return MockAsr(cfg, provider=factory.provider)
-    return WhisperAsr(models_dir / cfg.model_id, factory, cfg)
+    model_id = resolve_model_id(models_dir, cfg.model_id, cfg.candidates)
+    log.info("ASR model: %s", model_id)
+    return WhisperAsr(models_dir / model_id, factory, cfg)

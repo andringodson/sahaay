@@ -117,3 +117,99 @@ class TestGenAiDiscovery:
 
     def test_missing_returns_none(self, tmp_path):
         assert find_genai_model(tmp_path / "nope") is None
+
+
+class TestGlossarySeparators:
+    """The prompt asks for "::". The model does not always oblige.
+
+    Adding a repetition penalty - needed to stop small models looping -
+    makes them avoid the repeated "::" token and switch to "-". A parser
+    keyed to "::" turned a batch of three good Hindi glosses into zero
+    entries, silently.
+    """
+
+    def worker(self):
+        from sahaay.config import GlossaryConfig
+        from sahaay.glossary import GlossaryWorker
+        from sahaay.llm import HeuristicLlm
+
+        return GlossaryWorker(HeuristicLlm(), GlossaryConfig(), "hi")
+
+    @pytest.mark.parametrize(
+        "line,term",
+        [
+            ("entropy :: a measure of disorder", "entropy"),
+            ("1. Eigenvalue - एक मैट्रिक्स का निर्धारक तत्व", "Eigenvalue"),
+            ("2. Eigenvector – a special direction", "Eigenvector"),
+            ("3. Determinant: मैट्रिक्स का एक मान", "Determinant"),
+        ],
+    )
+    def test_separators(self, line, term):
+        out = self.worker()._parse(line, "src")
+        assert len(out) == 1
+        assert out[0].term == term
+
+    def test_hyphenated_words_are_not_split(self):
+        # "non-trivial" must not look like "non" :: "trivial ...". The dash
+        # separator requires surrounding spaces precisely for this.
+        assert self.worker()._parse("non-trivial solution ka matlab", "src") == []
+
+    def test_preamble_is_ignored(self):
+        # Models open with a sentence ending in a colon.
+        assert self.worker()._parse("यहाँ 3 तकनीकी शब्द हैं:", "src") == []
+
+    def test_truncated_gloss_is_dropped(self):
+        assert self.worker()._parse("Characteristic Equation :: मैट्र", "src") == []
+
+
+class TestModelResolution:
+    """Model ids resolve against what is on disk.
+
+    Pinning a name was a real deployment bug: the default was the AI Hub
+    model, but `download_models.py --auto` on x86 fetches the portable one,
+    so a clean install found no ASR at all.
+    """
+
+    def setup_models(self, root, *names):
+        for name in names:
+            d = root / name / "onnx"
+            d.mkdir(parents=True)
+            (d / "encoder_model.onnx").write_bytes(b"\0")
+        return root
+
+    def test_prefers_snapdragon_build(self, tmp_path):
+        from sahaay.config import AsrConfig, resolve_model_id
+
+        self.setup_models(tmp_path, "whisper_small_portable", "whisper_small_quantized")
+        cfg = AsrConfig()
+        assert resolve_model_id(tmp_path, cfg.model_id, cfg.candidates) == "whisper_small_quantized"
+
+    def test_falls_back_to_portable(self, tmp_path):
+        from sahaay.config import AsrConfig, resolve_model_id
+
+        self.setup_models(tmp_path, "whisper_small_portable")
+        cfg = AsrConfig()
+        assert resolve_model_id(tmp_path, cfg.model_id, cfg.candidates) == "whisper_small_portable"
+
+    def test_explicit_name_is_honoured(self, tmp_path):
+        from sahaay.config import AsrConfig, resolve_model_id
+
+        self.setup_models(tmp_path, "whisper_small_quantized")
+        cfg = AsrConfig()
+        assert resolve_model_id(tmp_path, "whisper_tiny_en", cfg.candidates) == "whisper_tiny_en"
+
+    def test_empty_directory_is_not_selected(self, tmp_path):
+        # A directory with no .onnx is a half-finished download, not a model.
+        from sahaay.config import AsrConfig, resolve_model_id
+
+        (tmp_path / "whisper_small_quantized").mkdir(parents=True)
+        self.setup_models(tmp_path, "whisper_small_portable")
+        cfg = AsrConfig()
+        assert resolve_model_id(tmp_path, cfg.model_id, cfg.candidates) == "whisper_small_portable"
+
+    def test_nothing_present_names_the_preferred_model(self, tmp_path):
+        # So the error message points at what the user most likely wanted.
+        from sahaay.config import AsrConfig, resolve_model_id
+
+        cfg = AsrConfig()
+        assert resolve_model_id(tmp_path, cfg.model_id, cfg.candidates) == cfg.candidates[0]

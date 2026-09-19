@@ -22,7 +22,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .config import SUPPORTED_LANGUAGES, TranslateConfig
+from .config import SUPPORTED_LANGUAGES, TranslateConfig, resolve_model_id
 from .kvcache import CACHE_FLAG, MergedDecoderCache
 from .llm import SEED_GLOSSARY
 from .runtime import SessionFactory
@@ -267,7 +267,8 @@ def create_translator(
     if not cfg.enabled or mock:
         return PassthroughTranslator(provider=factory.provider if not mock else "mock")
     try:
-        return NllbTranslator(models_dir / cfg.model_id, factory, cfg)
+        model_id = resolve_model_id(models_dir, cfg.model_id, cfg.candidates)
+        return NllbTranslator(models_dir / model_id, factory, cfg)
     except Exception as exc:  # noqa: BLE001
         log.warning("translator unavailable (%s); captions will not be translated", exc)
         return PassthroughTranslator(provider=factory.provider)

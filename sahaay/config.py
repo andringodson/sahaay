@@ -66,8 +66,19 @@ class VadConfig:
 
 @dataclass
 class AsrConfig:
-    # Directory under models/ holding the Whisper encoder+decoder.
-    model_id: str = "whisper_small_quantized"
+    # "auto" resolves against what is actually on disk, preferring the
+    # Snapdragon build. Pinning a name here instead was a real deployment
+    # bug: the default was the AI Hub model, but `download_models.py --auto`
+    # on an x86 machine fetches the portable one, so a clean install found
+    # no ASR at all and the app was dead on arrival for any reviewer.
+    model_id: str = "auto"
+    candidates: list[str] = field(
+        default_factory=lambda: [
+            "whisper_small_quantized",  # AI Hub, w8a16, Hexagon NPU
+            "whisper_small_portable",   # generic ONNX, runs anywhere
+            "whisper_tiny_en",          # smoke-test model
+        ]
+    )
     # None = let Whisper detect. Indian lecture audio is code-mixed, so
     # forcing a language usually hurts; detection per segment is better.
     language: str | None = None
@@ -78,7 +89,10 @@ class AsrConfig:
 @dataclass
 class TranslateConfig:
     enabled: bool = True
-    model_id: str = "nllb_200_distilled_600m_int8"
+    model_id: str = "auto"
+    candidates: list[str] = field(
+        default_factory=lambda: ["nllb_200_distilled_600m_int8"]
+    )
     target_language: str = "hi"
     max_tokens: int = 256
 
@@ -92,7 +106,14 @@ class GlossaryConfig:
     """
 
     enabled: bool = True
-    model_id: str = "llama_3_2_3b_instruct_hexagon"
+    model_id: str = "auto"
+    candidates: list[str] = field(
+        default_factory=lambda: [
+            "llama_3_2_3b_instruct_hexagon",  # prebuilt QNN context binaries
+            "llama_3_2_3b_instruct_genai",    # portable int4, the shipping size
+            "llama_3_2_1b_instruct_genai",    # half the download
+        ]
+    )
     # Don't ask the LLM about every caption line - batch a few together.
     batch_lines: int = 3
     # Never re-explain a term inside one session.
@@ -164,6 +185,31 @@ class Config:
         d["models_dir"] = str(self.models_dir)
         d["sessions_dir"] = str(self.sessions_dir)
         return d
+
+
+def resolve_model_id(models_dir: Path, configured: str, candidates: list[str]) -> str:
+    """Turn "auto" into a model directory that actually exists.
+
+    Candidates are ordered best-first, which means Snapdragon-tier builds
+    ahead of portable ones: on an HP Omnibook the AI Hub model wins, and the
+    same config on an x86 reviewer's laptop resolves to the portable export
+    without anyone editing a file.
+
+    An explicitly configured name is always honoured, even if it is absent -
+    a typo should surface as "model not found", not be silently swapped for
+    something else.
+    """
+    if configured and configured != "auto":
+        return configured
+
+    for candidate in candidates:
+        path = models_dir / candidate
+        if path.exists() and any(path.rglob("*.onnx")):
+            return candidate
+
+    # Nothing downloaded. Return the preferred name so the error message
+    # names the model the user most likely wanted.
+    return candidates[0] if candidates else ""
 
 
 def _apply_env(cfg: Config) -> Config:

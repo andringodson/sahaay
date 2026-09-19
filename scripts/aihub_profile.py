@@ -153,7 +153,7 @@ def profile_one(model_path: Path, device_name: str) -> dict | None:
         if not status.success:
             print(f"    ! compile failed: {status.message}")
             return {
-                "model": model_path.name, "device": device_name,
+                "model": f"{family}/{model_path.name}", "device": device_name,
                 "status": "compile failed", "url": compile_job.url,
                 "job_id": compile_job.job_id,
             }
@@ -172,7 +172,7 @@ def profile_one(model_path: Path, device_name: str) -> dict | None:
         if not status.success:
             print(f"    ! profiling failed: {status.message}")
             return {
-                "model": model_path.name, "device": device_name,
+                "model": f"{family}/{model_path.name}", "device": device_name,
                 "status": "profile failed", "url": job.url, "job_id": job.job_id,
             }
         profile = job.download_profile()
@@ -194,7 +194,7 @@ def profile_one(model_path: Path, device_name: str) -> dict | None:
             units[unit] = units.get(unit, 0) + 1
 
     row = {
-        "model": model_path.name,
+        "model": f"{family}/{model_path.name}",
         "device": device_name,
         "job_id": job.job_id,
         "url": job.url,
@@ -284,11 +284,31 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--device", action="append", help="device name; repeatable")
     ap.add_argument("--models-dir", type=Path, default=MODELS_DIR)
     ap.add_argument("--write", action="store_true", help="write docs/AIHUB.md")
-    ap.add_argument("--json", type=Path)
+    ap.add_argument("--json", type=Path, help="also save raw results here")
+    ap.add_argument(
+        "--from-json",
+        type=Path,
+        help="re-render the document from a saved run instead of submitting new jobs",
+    )
     args = ap.parse_args(argv)
 
     if args.list_devices:
         return list_devices()
+
+    # Re-rendering costs nothing and does not re-queue real hardware. Useful
+    # when only the prose or the skip list changed.
+    if args.from_json:
+        rows = json.loads(args.from_json.read_text(encoding="utf-8"))
+        rows = [r for r in rows if not skip_reason(Path(r.get("model", "")))]
+        md = render_markdown(rows)
+        if args.write:
+            out = REPO_ROOT / "docs" / "AIHUB.md"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(md, encoding="utf-8")
+            print(f"  re-rendered {out} from {args.from_json} ({len(rows)} rows)")
+        else:
+            print(md)
+        return 0
 
     try:
         import qai_hub  # noqa: F401
