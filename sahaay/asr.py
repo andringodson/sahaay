@@ -40,6 +40,21 @@ EOT = "<|endoftext|>"
 NO_TIMESTAMPS = "<|notimestamps|>"
 TRANSCRIBE = "<|transcribe|>"
 
+# Whisper's language codes. The decoder prompt is
+# [SOT, <|lang|>, <|transcribe|>, <|notimestamps|>] and the language token is
+# NOT optional on a multilingual model: leaving it out puts the decoder
+# out of distribution and it degenerates. Measured on whisper-small with a
+# 15 s clip, omitting it produced "The is the................" for 220
+# tokens. So when no language is configured we detect one.
+#
+# Indian languages first purely for readability; order has no effect.
+WHISPER_LANGUAGES = (
+    "hi", "ta", "te", "kn", "ml", "bn", "mr", "gu", "pa", "ur", "ne", "si",
+    "en", "zh", "de", "es", "ru", "ko", "fr", "ja", "pt", "tr", "pl", "ca",
+    "nl", "ar", "sv", "it", "id", "vi", "he", "uk", "el", "ms", "cs", "ro",
+    "da", "hu", "fi", "no", "th", "sk", "fa", "sw", "bg", "hr", "lt", "az",
+)
+
 
 @dataclass
 class AsrResult:
@@ -142,6 +157,21 @@ class WhisperAsr:
         if self.tokenizer is None:
             log.warning("tokenizer.json missing; transcripts will be token ids")
 
+        # An English-only model (whisper-*.en) has no language tokens at all,
+        # which is how we tell the two apart without reading config files.
+        self._language_tokens: dict[str, int] = {}
+        if self.tokenizer is not None:
+            for code in WHISPER_LANGUAGES:
+                tid = self.tokenizer.language_token(code)
+                if tid is not None:
+                    self._language_tokens[code] = tid
+        self.multilingual = bool(self._language_tokens)
+        log.info(
+            "whisper is %s",
+            f"multilingual ({len(self._language_tokens)} languages)"
+            if self.multilingual else "English-only",
+        )
+
         self._config = {}
         cfg_path = self._find_file("config.json")
         if cfg_path:
@@ -200,6 +230,69 @@ class WhisperAsr:
         names = [o.name for o in self.encoder.get_outputs()]
         return dict(zip(names, outs, strict=True))
 
+    def detect_language(self, enc_state: dict[str, np.ndarray]) -> str | None:
+        """Run one decode step from SOT and read off the language.
+
+        This is how Whisper itself does it: with only the start token in the
+        prompt, the highest-probability next token is the language tag. We
+        restrict the argmax to language tokens so an ordinary word can never
+        win, then cache nothing - a code-mixed lecture genuinely changes
+        language between segments, which is the whole point of detecting per
+        segment rather than once per session.
+        """
+        if self.tokenizer is None or not self._language_tokens:
+            return None
+
+        sot = self.tokenizer.special(SOT)
+        if sot is None:
+            return None
+
+        try:
+            logits = self._decode_step([sot], enc_state)
+        except Exception as exc:  # noqa: BLE001 - detection must never be fatal
+            log.debug("language detection failed (%s); falling back to English", exc)
+            return None
+
+        ids = np.array(list(self._language_tokens.values()), dtype=np.int64)
+        row = logits.reshape(-1, logits.shape[-1])[-1]
+        if ids.max() >= row.shape[0]:
+            return None
+        best = int(ids[int(np.argmax(row[ids]))])
+        codes = {v: k for k, v in self._language_tokens.items()}
+        return codes.get(best)
+
+    def _decode_step(self, tokens: list[int], enc_state: dict[str, np.ndarray]) -> np.ndarray:
+        """One decoder pass over ``tokens``, returning raw logits."""
+        cross_feeds = self._cross_feeds(enc_state)
+        token_input = self._pick(["input_ids", "tokens", "x"])
+        if token_input is None:
+            raise RuntimeError("decoder has no token input")
+
+        feeds: dict[str, np.ndarray] = dict(cross_feeds)
+        if self._positional:
+            feeds[token_input] = np.array([[tokens[-1]]], dtype=np.int32)
+            feeds[self._index_name] = np.array([len(tokens) - 1], dtype=np.int32)
+        else:
+            feeds[token_input] = np.array([tokens], dtype=np.int64)
+            if self._merged:
+                feeds.update(self._cache.empty())
+                feeds[CACHE_FLAG] = MergedDecoderCache.flag(True)
+
+        for name, meta in self.dec_inputs.items():
+            if name not in feeds:
+                feeds[name] = self._zeros_for(meta)
+
+        return np.asarray(self.decoder.run(None, feeds)[0], dtype=np.float32)
+
+    def _cross_feeds(self, enc_state: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
+        feeds = {k: v for k, v in enc_state.items() if k in self.dec_inputs}
+        if not feeds and enc_state:
+            first = next(iter(enc_state.values()))
+            for cand in ("encoder_hidden_states", "encoder_outputs", "audio_features"):
+                if cand in self.dec_inputs:
+                    return {cand: first}
+        return feeds
+
     def _initial_tokens(self, language: str | None) -> list[int]:
         if self.tokenizer is None:
             return [50258]
@@ -226,15 +319,7 @@ class WhisperAsr:
         eot = self.tokenizer.eot if self.tokenizer else 50257
 
         # The encoder's outputs feed the decoder's cross-attention inputs.
-        cross_feeds = {k: v for k, v in enc_state.items() if k in self.dec_inputs}
-        if not cross_feeds and enc_state:
-            # Optimum names the encoder output "last_hidden_state" and the
-            # decoder input "encoder_hidden_states".
-            first = next(iter(enc_state.values()))
-            for cand in ("encoder_hidden_states", "encoder_outputs", "audio_features"):
-                if cand in self.dec_inputs:
-                    cross_feeds = {cand: first}
-                    break
+        cross_feeds = self._cross_feeds(enc_state)
 
         token_input = self._pick(["input_ids", "tokens", "x"])
         if token_input is None:
@@ -312,19 +397,29 @@ class WhisperAsr:
 
         mel = log_mel_spectrogram(audio, n_mels=self.n_mels)
         enc_state = self._encode(mel)
-        token_ids = self._decode_greedy(enc_state, language or self.cfg.language)
+
+        chosen = language or self.cfg.language
+        detected = None
+        if chosen is None and self.multilingual:
+            detected = self.detect_language(enc_state)
+            # English is the safe default: it keeps the English technical
+            # terms intact, which is what the student needs to recognise.
+            chosen = detected or "en"
+
+        token_ids = self._decode_greedy(enc_state, chosen)
 
         text = self.tokenizer.decode(token_ids) if self.tokenizer else " ".join(map(str, token_ids))
         latency_ms = (time.perf_counter() - t0) * 1000.0
 
         return AsrResult(
             text=text,
-            language=language or self.cfg.language,
+            language=chosen,
             duration_s=duration,
             latency_ms=latency_ms,
             rtf=(latency_ms / 1000.0) / duration if duration > 0 else 0.0,
             provider=self.factory.provider,
             tokens=len(token_ids),
+            meta={"detected_language": detected} if detected else {},
         )
 
 
