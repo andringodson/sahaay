@@ -1,0 +1,70 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sahaay"
+version = "0.3.0"
+description = "Offline live lecture captioning, Indic translation and jargon glossary for Snapdragon-powered HP PCs"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Andrin Godson" }]
+keywords = ["snapdragon", "npu", "qnn", "whisper", "asr", "accessibility", "on-device", "indic"]
+
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Education",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Multimedia :: Sound/Audio :: Speech",
+  "Topic :: Adaptive Technologies",
+]
+
+dependencies = [
+  "numpy>=1.24",
+  "huggingface-hub>=0.26",
+  "tokenizers>=0.20",
+  "sentencepiece>=0.2.0",
+  "fastapi>=0.115",
+  "uvicorn>=0.32",
+  "rich>=13.7",
+]
+
+[project.optional-dependencies]
+# Windows: carries Qualcomm's plugin execution provider. Installing it is
+# necessary but not sufficient - see docs/HARDWARE.md for the registration
+# step that sahaay/runtime.py performs on import.
+qnn = ["onnxruntime-qnn>=2.5.0"]
+cpu = ["onnxruntime>=1.20.0"]
+audio = ["pyaudiowpatch>=0.2.12", "soundfile>=0.12"]
+llm = ["onnxruntime-genai>=0.5.0"]
+aihub = ["qai-hub>=0.23.0"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.24"]
+
+[project.scripts]
+sahaay = "sahaay.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/andringodson/sahaay"
+Issues = "https://github.com/andringodson/sahaay/issues"
+
+[tool.setuptools.packages.find]
+include = ["sahaay*"]
+
+[tool.setuptools.package-data]
+sahaay = ["ui/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM"]
+ignore = ["E501"]
