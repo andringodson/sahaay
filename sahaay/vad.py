@@ -215,12 +215,40 @@ class Segmenter:
         return self._flush(self._elapsed_samples / self.audio_cfg.sample_rate)
 
 
+def find_silero(models_dir: Path) -> Path | None:
+    """Locate the Silero graph wherever the repo happened to put it.
+
+    The HF repo ships the model as ``silero_vad/onnx/model.onnx`` along with
+    seven quantised siblings (int8, fp16, q4, ...). Hard-coding
+    ``silero_vad/silero_vad.onnx`` found nothing and fell through to energy
+    gating *silently* - the app worked, just worse, with one INFO line to
+    say so. Search instead, and prefer full precision: this model is 2 MB
+    and runs on the CPU, so quantising it buys nothing and costs accuracy
+    at the exact moment that matters, deciding where a sentence ends.
+    """
+    root = models_dir / "silero_vad"
+    if not root.exists():
+        return None
+
+    candidates = sorted(root.rglob("*.onnx"))
+    if not candidates:
+        return None
+
+    quantised = ("int8", "uint8", "fp16", "q4", "bnb4", "quantized")
+    for path in candidates:
+        if not any(marker in path.stem.lower() for marker in quantised):
+            return path
+    return candidates[0]
+
+
 def create_vad(models_dir: Path, cfg: VadConfig) -> SileroVad | EnergyVad:
     """Prefer Silero; fall back to energy gating so the app always starts."""
-    path = models_dir / "silero_vad" / "silero_vad.onnx"
-    if path.exists():
+    path = find_silero(models_dir)
+    if path is not None:
         try:
-            return SileroVad(path)
+            vad = SileroVad(path)
+            log.info("Silero VAD loaded from %s", path.name)
+            return vad
         except Exception as exc:  # noqa: BLE001
             log.warning("Silero VAD failed to load (%s); using energy VAD", exc)
     else:

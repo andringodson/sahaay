@@ -122,3 +122,68 @@ class TestGlossaryParsing:
         first = len(w.entries)
         w._process(["eigenvalue again"])
         assert len(w.entries) == first
+
+
+class TestInflection:
+    """Lectures say "eigenvalues"; the glossary stores "eigenvalue".
+
+    Exact matching missed every plural, and it was not theoretical: Telugu
+    rendered "eigenvalues" as "self values" in a real translation run.
+    """
+
+    def protector(self) -> TermProtector:
+        from sahaay.llm import SEED_GLOSSARY
+
+        return TermProtector(extra_terms=list(SEED_GLOSSARY))
+
+    @pytest.mark.parametrize(
+        "word",
+        ["eigenvalue", "eigenvalues", "eigenvectors", "determinant",
+         "gradients", "diagonalize", "diagonalizing", "quantization"],
+    )
+    def test_seeded_terms_and_inflections_are_protected(self, word):
+        _, mapping = self.protector().protect(f"We discuss {word} today.")
+        assert word in mapping.values()
+
+    def test_ordinary_plurals_are_not_protected(self):
+        _, mapping = self.protector().protect("The students asked questions.")
+        assert mapping == {}
+
+
+class TestNumericUnits:
+    """The unit pattern once accepted any short token after a number.
+
+    "must be 0 for a solution" protected the span "0 for", tearing a hole in
+    the sentence that came back mangled from the translator.
+    """
+
+    @pytest.mark.parametrize(
+        "text,expected",
+        [
+            ("It takes 2.5 ms to run.", "2.5 ms"),
+            ("We have 12 GB of memory.", "12 GB"),
+            ("Runs at 40 TOPS today.", "40 TOPS"),
+            ("Weighs 3.14 kg exactly.", "3.14 kg"),
+        ],
+    )
+    def test_real_units_are_captured(self, text, expected):
+        _, mapping = TermProtector().protect(text)
+        assert expected in mapping.values()
+
+    @pytest.mark.parametrize(
+        "text,bad",
+        [
+            ("must be 0 for a solution", "0 for"),
+            ("take 5 and add", "5 and"),
+            ("there are 3 new ones", "3 new"),
+        ],
+    )
+    def test_following_words_are_not_swallowed(self, text, bad):
+        _, mapping = TermProtector().protect(text)
+        assert bad not in mapping.values()
+
+    def test_round_trip_survives_units(self):
+        p = TermProtector()
+        text = "It takes 2.5 ms and 40 TOPS at 3.14 kg."
+        protected, mapping = p.protect(text)
+        assert p.restore(protected, mapping) == text

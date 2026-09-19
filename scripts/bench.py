@@ -184,6 +184,54 @@ def bench_provider(provider: str | None, runs: int, warmup: int) -> tuple[list[R
     return results, report.to_dict()
 
 
+def _observations(results: list[Result]) -> list[str]:
+    """Call out the bottleneck rather than leaving it in the table to be found.
+
+    A benchmark that only reports numbers invites the reader to assume
+    everything is fine. Naming the slowest stage, and what it means for a
+    live captioner, is the more useful and more honest output.
+    """
+    if not results:
+        return ["_Nothing measured._"]
+
+    out: list[str] = []
+    model_stages = [r for r in results if not r.stage.startswith("mel")]
+    if not model_stages:
+        return ["Only the CPU front end was measured - no model weights were present."]
+
+    slowest = max(model_stages, key=lambda r: r.mean_ms)
+    out.append(
+        f"- **Slowest stage: `{slowest.stage}` at {slowest.mean_ms:.0f} ms mean "
+        f"({slowest.p95_ms:.0f} ms p95) on {slowest.provider}.**"
+    )
+
+    asr = next((r for r in results if r.stage == "asr"), None)
+    if asr and "rtf" in asr.extra:
+        rtf = asr.extra["rtf"]
+        verdict = "comfortably faster than real time" if rtf < 0.5 else (
+            "faster than real time, but with little headroom" if rtf < 1
+            else "SLOWER than real time - captions will drift behind"
+        )
+        out.append(f"- Speech recognition runs at RTF {rtf}, {verdict}.")
+
+    tr = next((r for r in results if r.stage == "translate"), None)
+    if tr and tr.mean_ms > 1500:
+        out.append(
+            f"- Translation is the bottleneck here ({tr.mean_ms:.0f} ms per caption). "
+            "Segments are 1-12 s, so the pipeline still keeps up, but this is the "
+            "stage that most needs the NPU - it is a 600M encoder-decoder doing "
+            "autoregressive decoding, and on CPU that dominates everything else."
+        )
+
+    llm = next((r for r in results if r.stage.startswith("llm")), None)
+    if llm and "tokens_per_second" in llm.extra:
+        out.append(
+            f"- The glossary LLM generates {llm.extra['tokens_per_second']} tok/s, "
+            "running concurrently with transcription."
+        )
+    return out
+
+
 def render_markdown(all_results: list[Result], devices: list[dict], notes: str) -> str:
     now = dt.datetime.now().strftime("%d %b %Y")
     primary = devices[0] if devices else {}
@@ -222,6 +270,9 @@ def render_markdown(all_results: list[Result], devices: list[dict], notes: str) 
             f"{r.p50_ms:.1f} ms | {r.p95_ms:.1f} ms | {r.min_ms:.1f} ms | "
             f"{', '.join(extra_bits)} |"
         )
+
+    lines += ["", "## Observations", ""]
+    lines += _observations(all_results)
 
     lines += [
         "",

@@ -44,13 +44,17 @@ class ModelSpec:
 # Anything larger than ~2 GB is called out explicitly, because a student on a
 # metered connection deserves to know before the download starts.
 MODELS: list[ModelSpec] = [
+    # NOTE ON PATTERNS. These repos ship a full-precision graph plus seven or
+    # more quantised siblings (int8, fp16, q4, bnb4, ...). A pattern as loose
+    # as "onnx/*.onnx" pulls every one of them - measured at multiple GB for
+    # whisper-small against an advertised 980 MB. Name the files explicitly.
     ModelSpec(
         key="vad",
         target_dir="silero_vad",
         repo_id="onnx-community/silero-vad",
         description="Silero VAD - speech/silence gating",
         approx_mb=2,
-        allow_patterns=["*.onnx", "*.json"],
+        allow_patterns=["onnx/model.onnx", "*.json"],
         tier="both",
         note="Tiny; always runs on CPU. Without it Sahaay falls back to energy gating.",
     ),
@@ -68,11 +72,29 @@ MODELS: list[ModelSpec] = [
         key="asr",
         target_dir="whisper_small_portable",
         repo_id="onnx-community/whisper-small",
-        description="Whisper Small, generic ONNX export",
-        approx_mb=980,
-        allow_patterns=["onnx/*.onnx", "onnx/*.onnx_data", "*.json"],
+        description="Whisper Small, generic ONNX export (int8 decoder)",
+        approx_mb=620,
+        allow_patterns=[
+            "onnx/encoder_model.onnx",
+            "onnx/decoder_model_merged_int8.onnx",
+            "*.json",
+        ],
         tier="portable",
         note="Runs on any CPU. Slower, but it is what makes the repo reviewable.",
+    ),
+    ModelSpec(
+        key="asr",
+        target_dir="whisper_tiny_en",
+        repo_id="onnx-community/whisper-tiny.en",
+        description="Whisper Tiny (English) - fast smoke-test model",
+        approx_mb=150,
+        allow_patterns=[
+            "onnx/encoder_model.onnx",
+            "onnx/decoder_model_merged.onnx",
+            "*.json",
+        ],
+        tier="portable",
+        note="Not for real use - small enough to verify the pipeline in seconds.",
     ),
     ModelSpec(
         key="translate",
@@ -80,7 +102,12 @@ MODELS: list[ModelSpec] = [
         repo_id="Xenova/nllb-200-distilled-600M",
         description="NLLB-200 distilled 600M, INT8 - 200 languages",
         approx_mb=650,
-        allow_patterns=["onnx/*quantized*.onnx", "onnx/*int8*.onnx", "*.json", "*.model"],
+        allow_patterns=[
+            "onnx/encoder_model_int8.onnx",
+            "onnx/decoder_model_merged_int8.onnx",
+            "*.json",
+            "*.model",
+        ],
         tier="both",
         note="Covers all eight Indian target languages in one model.",
     ),

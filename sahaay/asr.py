@@ -29,6 +29,7 @@ import numpy as np
 
 from .config import AsrConfig
 from .features import log_mel_spectrogram
+from .kvcache import CACHE_FLAG, MergedDecoderCache
 from .runtime import SessionFactory
 
 log = logging.getLogger(__name__)
@@ -89,8 +90,14 @@ class WhisperAsr:
         self.factory = factory
         self.model_dir = Path(model_dir)
 
-        enc_path = self._find(["encoder", "WhisperEncoder"])
-        dec_path = self._find(["decoder", "WhisperDecoder"])
+        enc_path = self._find(["encoder_model", "encoder", "WhisperEncoder"])
+        # The merged decoder carries both the cache and no-cache branches;
+        # `decoder_with_past_model` is the cache-only half and cannot run the
+        # first step, so it is excluded rather than ranked lower.
+        dec_path = self._find(
+            ["decoder_model_merged", "decoder_model", "decoder", "WhisperDecoder"],
+            avoid=("with_past",),
+        )
         if enc_path is None or dec_path is None:
             raise FileNotFoundError(
                 f"Whisper encoder/decoder not found under {self.model_dir}.\n"
@@ -105,6 +112,21 @@ class WhisperAsr:
         self.enc_inputs = {i.name: i for i in self.encoder.get_inputs()}
         self.dec_inputs = {i.name: i for i in self.decoder.get_inputs()}
         self.dec_outputs = [o.name for o in self.decoder.get_outputs()]
+
+        # Decide the packaging once, from the graph itself, rather than on
+        # every decode step. See the module docstring.
+        self._index_name = next(
+            (n for n in ("index", "position_ids") if n in self.dec_inputs), None
+        )
+        self._positional = self._index_name is not None
+        self._cache = MergedDecoderCache(self.dec_inputs, self.dec_outputs)
+        self._merged = not self._positional and self._cache.active
+        log.info(
+            "decoder packaging: %s",
+            "AI Hub (positional index)" if self._positional
+            else "Optimum merged (KV cache)" if self._merged
+            else "plain (no cache)",
+        )
 
         # n_mels is 80 for every Whisper except large-v3 (128). Read it off
         # the encoder's own input shape instead of guessing.
@@ -127,12 +149,42 @@ class WhisperAsr:
 
     # -- file discovery ----------------------------------------------------
 
-    def _find(self, stems: list[str]) -> Path | None:
-        for candidate in sorted(self.model_dir.rglob("*.onnx")):
-            name = candidate.name.lower()
-            if any(s.lower() in name for s in stems):
-                return candidate
-        return None
+    # Variant suffixes shipped alongside the full-precision graph. We do not
+    # want these picked by accident: the model directory may legitimately
+    # hold a dozen of them, and quantisation choice belongs in the download
+    # step, not in a glob that happens to sort a certain way.
+    _VARIANTS = ("int8", "uint8", "fp16", "q4", "q4f16", "bnb4", "quantized")
+
+    def _find(self, stems: list[str], avoid: tuple[str, ...] = ()) -> Path | None:
+        """Pick one graph out of a directory that may hold many variants.
+
+        Preference: an exact stem match at full precision, then any
+        full-precision match, then a quantised one. Without this, a Whisper
+        repo with 24 .onnx files would hand back `decoder_model_bnb4.onnx`
+        or `decoder_with_past_model.onnx` purely on sort order.
+        """
+        candidates = sorted(self.model_dir.rglob("*.onnx"))
+        if not candidates:
+            return None
+
+        def matches(p: Path) -> bool:
+            name = p.stem.lower()
+            if any(a in name for a in avoid):
+                return False
+            return any(s.lower() in name for s in stems)
+
+        pool = [p for p in candidates if matches(p)]
+        if not pool:
+            return None
+
+        full = [p for p in pool if not any(v in p.stem.lower() for v in self._VARIANTS)]
+        preferred = full or pool
+
+        for stem in stems:
+            for p in preferred:
+                if p.stem.lower() == stem.lower():
+                    return p
+        return preferred[0]
 
     def _find_file(self, name: str) -> Path | None:
         hits = list(self.model_dir.rglob(name))
@@ -174,11 +226,7 @@ class WhisperAsr:
         eot = self.tokenizer.eot if self.tokenizer else 50257
 
         # The encoder's outputs feed the decoder's cross-attention inputs.
-        # Match them positionally by name overlap, which is stable across
-        # both the AI Hub and Optimum exports.
-        cross_feeds = {
-            k: v for k, v in enc_state.items() if k in self.dec_inputs
-        }
+        cross_feeds = {k: v for k, v in enc_state.items() if k in self.dec_inputs}
         if not cross_feeds and enc_state:
             # Optimum names the encoder output "last_hidden_state" and the
             # decoder input "encoder_hidden_states".
@@ -188,31 +236,48 @@ class WhisperAsr:
                     cross_feeds = {cand: first}
                     break
 
-        for _step in range(self.cfg.max_decode_tokens):
-            feeds: dict[str, np.ndarray] = dict(cross_feeds)
+        token_input = self._pick(["input_ids", "tokens", "x"])
+        if token_input is None:
+            raise RuntimeError(f"No token input on decoder: {list(self.dec_inputs)}")
 
-            token_input = self._pick(["input_ids", "tokens", "x"])
-            if token_input is None:
-                raise RuntimeError(f"No token input on decoder: {list(self.dec_inputs)}")
-            # AI Hub's decoder consumes one token at a time with an explicit
-            # position index; Optimum's consumes the whole prefix.
-            if "index" in self.dec_inputs or "position_ids" in self.dec_inputs:
+        past: dict[str, np.ndarray] = {}
+
+        for step in range(self.cfg.max_decode_tokens):
+            feeds: dict[str, np.ndarray] = dict(cross_feeds)
+            first_pass = step == 0
+
+            if self._positional:
+                # AI Hub: one token at a time plus an explicit position.
                 feeds[token_input] = np.array([[tokens[-1]]], dtype=np.int32)
-                idx_name = "index" if "index" in self.dec_inputs else "position_ids"
-                feeds[idx_name] = np.array([len(tokens) - 1], dtype=np.int32)
+                feeds[self._index_name] = np.array([len(tokens) - 1], dtype=np.int32)
+            elif self._merged:
+                # Optimum merged decoder. The first pass computes the caches
+                # from the whole prompt; every pass after feeds back the
+                # previous step's `present.*` and submits only the newest
+                # token. Re-sending the full prefix each step also "works",
+                # but makes decoding quadratic - on a 200-token caption that
+                # is the difference between live and not.
+                if first_pass:
+                    feeds[token_input] = np.array([tokens], dtype=np.int64)
+                    feeds.update(self._cache.empty())
+                else:
+                    feeds[token_input] = np.array([[tokens[-1]]], dtype=np.int64)
+                    feeds.update(past)
+                feeds[CACHE_FLAG] = MergedDecoderCache.flag(first_pass)
             else:
                 feeds[token_input] = np.array([tokens], dtype=np.int64)
 
-            # Fill any remaining required inputs with zeros of the right shape
-            # (KV cache slots on the first step).
+            # Anything still unfilled gets a correctly-typed zero tensor.
             for name, meta in self.dec_inputs.items():
-                if name in feeds:
-                    continue
-                feeds[name] = self._zeros_for(meta)
+                if name not in feeds:
+                    feeds[name] = self._zeros_for(meta)
 
             outs = self.decoder.run(None, feeds)
             logits = np.asarray(outs[0], dtype=np.float32)
             next_token = int(logits.reshape(-1, logits.shape[-1])[-1].argmax())
+
+            if self._merged:
+                past = self._cache.collect(outs, reuse_encoder=not first_pass, previous=past)
 
             if next_token == eot:
                 break
@@ -233,6 +298,9 @@ class WhisperAsr:
             "tensor(float16)": np.float16,
             "tensor(int64)": np.int64,
             "tensor(int32)": np.int32,
+            # Missing bool was a real failure: use_cache_branch is bool, and
+            # feeding it float32 made ORT reject the whole decoder call.
+            "tensor(bool)": np.bool_,
         }
         dtype = dtype_map.get(meta.type, np.float32)
         shape = [d if isinstance(d, int) and d > 0 else 1 for d in meta.shape]

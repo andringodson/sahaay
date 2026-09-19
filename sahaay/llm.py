@@ -128,7 +128,7 @@ _STOPWORDS = {
 # Seeded with the STEM vocabulary an Indian engineering syllabus actually
 # uses. The LLM handles anything not in here; this table exists so the
 # no-model fallback is still useful rather than empty.
-_SEED_GLOSSARY: dict[str, str] = {
+SEED_GLOSSARY: dict[str, str] = {
     "eigenvalue": "A scalar showing how much a matrix stretches a special direction (its eigenvector).",
     "eigenvector": "A direction that a matrix only stretches or shrinks, without rotating it.",
     "determinant": "A single number from a square matrix; zero means the matrix squashes space flat.",
@@ -182,13 +182,13 @@ class HeuristicLlm(LlmBackend):
             # Known terms first. Unknown ones only clear the bar if the
             # morphology is strongly scientific - a wrong entry costs more
             # credibility than a missing one costs coverage.
-            if key in _SEED_GLOSSARY or self._looks_technical(key):
+            if key in SEED_GLOSSARY or self._looks_technical(key):
                 found.append(key)
             if len(found) >= 3:
                 break
 
         lines = [
-            f"{term} :: {_SEED_GLOSSARY.get(term, 'Technical term from this lecture - install the language model for a full explanation.')}"
+            f"{term} :: {SEED_GLOSSARY.get(term, 'Technical term from this lecture - install the language model for a full explanation.')}"
             for term in found
         ]
         return LlmResult(
