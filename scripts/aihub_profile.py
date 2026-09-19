@@ -100,6 +100,13 @@ SKIP = {
         "seq2seq decoders. ONNX Runtime GenAI owns its execution, and its "
         "throughput is reported as tokens/sec by scripts/bench.py"
     ),
+    "nllb": (
+        "the published export is not spec-clean - `last_hidden_state` appears "
+        "in both value_info and the graph IO, which AI Hub rejects and ONNX "
+        "Runtime tolerates. That is a defect in the upstream export, not in "
+        "the model: it runs correctly here, and re-exporting it cleanly is "
+        "the fix. Its CPU latency is in BENCHMARKS.md"
+    ),
 }
 
 

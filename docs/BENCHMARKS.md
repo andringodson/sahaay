@@ -15,15 +15,17 @@ on the machine described below - none are copied from a datasheet.
 
 | Stage | Provider | Runs | Mean | p50 | p95 | Min | Notes |
 |---|---|---:|---:|---:|---:|---:|---|
-| mel (CPU) | CPU | 5 | 28.7 ms | 30.3 ms | 47.4 ms | 16.7 ms |  |
-| asr | CPU | 5 | 318.6 ms | 316.0 ms | 351.5 ms | 289.4 ms | RTF 0.04, 8.0s audio |
-| translate | CPU | 5 | 4162.2 ms | 4183.3 ms | 4238.0 ms | 4058.9 ms |  |
+| mel (CPU) | CPU | 5 | 32.2 ms | 25.5 ms | 56.8 ms | 20.9 ms |  |
+| asr | CPU | 5 | 339.6 ms | 336.9 ms | 365.6 ms | 317.9 ms | RTF 0.042, 8.0s audio |
+| translate | CPU | 5 | 4067.8 ms | 4009.7 ms | 4196.5 ms | 3957.1 ms |  |
+| llm (glossary) | CPU | 3 | 2869.8 ms | 2858.7 ms | 2999.3 ms | 2751.4 ms | 23.3 tok/s |
 
 ## Observations
 
-- **Slowest stage: `translate` at 4162 ms mean (4238 ms p95) on CPU.**
-- Speech recognition runs at RTF 0.04, comfortably faster than real time.
-- Translation is the bottleneck here (4162 ms per caption). Segments are 1-12 s, so the pipeline still keeps up, but this is the stage that most needs the NPU - it is a 600M encoder-decoder doing autoregressive decoding, and on CPU that dominates everything else.
+- **Slowest stage: `translate` at 4068 ms mean (4196 ms p95) on CPU.**
+- Speech recognition runs at RTF 0.042, comfortably faster than real time.
+- Translation is the bottleneck here (4068 ms per caption). Segments are 1-12 s, so the pipeline still keeps up, but this is the stage that most needs the NPU - it is a 600M encoder-decoder doing autoregressive decoding, and on CPU that dominates everything else.
+- The glossary LLM generates 23.3 tok/s, running concurrently with transcription.
 
 ## How to read this
 
