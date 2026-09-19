@@ -200,3 +200,8 @@ MIT — see [LICENSE](LICENSE). Model weights carry their own licences.
 ## Acknowledgements
 
 Built on [Qualcomm AI Hub](https://aihub.qualcomm.com/) models, [ONNX Runtime](https://onnxruntime.ai/) with the QNN execution provider, OpenAI Whisper, Meta's NLLB-200 and Llama 3.2, and [Silero VAD](https://github.com/snakers4/silero-vad).
+
+## Submitting this
+
+The presentation kit - slide outline, three-minute demo script and a
+pre-recording checklist - is in [docs/PRESENTATION.md](docs/PRESENTATION.md).
