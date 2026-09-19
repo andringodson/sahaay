@@ -174,7 +174,7 @@ The primary user may be reading the lecture rather than hearing it, so this is t
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File install.ps1 -Dev
-.\.venv\Scripts\python.exe -m pytest        # 84 tests, no weights required
+.\.venv\Scripts\python.exe -m pytest        # 98 tests, no weights required
 ```
 
 ```

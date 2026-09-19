@@ -43,13 +43,11 @@ jobs:
       - name: Report execution provider
         run: python -m sahaay --device
 
+      # tests/test_server.py drives the full mock pipeline through the real
+      # HTTP and WebSocket surface, so a separate shell smoke step would only
+      # duplicate it less reliably.
       - name: Tests
         run: python -m pytest tests/ -q
-
-      - name: Pipeline smoke test (mock)
-        run: python -m sahaay --cli --mock --no-browser & sleep 12 ; echo done
-        shell: bash
-        continue-on-error: true
 
   lint:
     runs-on: ubuntu-latest
