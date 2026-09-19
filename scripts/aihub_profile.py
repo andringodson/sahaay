@@ -1,10 +1,15 @@
 """Profile Sahaay's models on real Snapdragon hardware via Qualcomm AI Hub.
 
-This is how the NPU numbers in docs/BENCHMARKS.md are obtained without owning
-a Snapdragon PC. AI Hub provisions physical devices - Snapdragon X Elite
-among them - and returns per-layer latency plus a **public job URL** that
-anyone can open and verify. Measured numbers with a link beat claimed numbers
-without one.
+This is how the NPU numbers in docs/AIHUB.md are obtained without owning a
+Snapdragon PC. AI Hub provisions physical devices - Snapdragon X Elite and
+X2 Elite among them - and returns on-device latency plus a **public job URL**
+anyone can open. Measured numbers with a link beat claimed numbers without one.
+
+Two stages, not one. ``submit_profile_job`` needs a model already compiled
+for the target, so each graph goes through ``submit_compile_job`` first. That
+step also needs **fixed input shapes**: ONNX exports carry dynamic axes
+(``batch``, ``encoder_sequence_length``) that a hardware compiler cannot plan
+memory for. INPUT_SPECS below pins them to the shapes Sahaay actually runs.
 
 Setup (free tier):
 
@@ -14,12 +19,7 @@ Setup (free tier):
 Then:
 
     python scripts/aihub_profile.py --list-devices
-    python scripts/aihub_profile.py --model whisper_small_quantized
     python scripts/aihub_profile.py --all --write
-
-The job links it prints go straight into the README. A reviewer clicking one
-sees Qualcomm's own measurement of our graph on their own silicon, which is a
-stronger claim than anything this repo could assert about itself.
 """
 
 from __future__ import annotations
@@ -34,21 +34,69 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from sahaay.config import MODELS_DIR  # noqa: E402
+from sahaay.features import N_FRAMES  # noqa: E402
 
-# Devices worth profiling against. The X Elite is the one the challenge
-# targets; the 8 Gen 3 is included because the same graphs are what a phone
-# build would use, and it costs nothing extra to ask.
+# Devices worth profiling. X Elite is what the challenge targets; X2 Elite is
+# the current generation; X Plus is the volume part students will actually be
+# given. Three data points also show how the workload scales across the line.
 DEFAULT_DEVICES = [
     "Snapdragon X Elite CRD",
-    "Snapdragon 8 Elite QRD",
+    "Snapdragon X2 Elite CRD",
+    "Snapdragon X Plus 8-Core CRD",
 ]
+
+
+# Fixed shapes for compilation, keyed by a substring of the file name.
+# These are the shapes Sahaay feeds at runtime, not arbitrary ones: the mel
+# front end always produces (1, 80, 3000), and Silero always sees 512 samples.
+INPUT_SPECS: dict[str, dict] = {
+    "encoder_model": {"input_features": ((1, 80, N_FRAMES), "float32")},
+    "silero": {
+        "input": ((1, 512), "float32"),
+        "state": ((2, 1, 128), "float32"),
+        # Silero declares `sr` as a rank-0 scalar. Passing (1,) here is
+        # rejected outright: "does not match shapes inferred from the model".
+        "sr": ((), "int64"),
+    },
+}
+
+# Graphs we deliberately do not profile, and why. Stating this is better than
+# quietly omitting them.
+SKIP = {
+    "decoder_model_merged": (
+        "autoregressive decoder with a dynamic KV cache - a single fixed-shape "
+        "profile would measure one arbitrary sequence length and read as the "
+        "cost per caption, which it is not"
+    ),
+    "decoder_with_past": "cache-only half of the merged decoder; never run standalone",
+    "silero": (
+        "runs on the CPU by design - it is 1.8 MB and stateful, so moving it to "
+        "the HTP costs more in transfer than it saves in compute. AI Hub also "
+        "rejects its recurrent graph during shape inference"
+    ),
+}
+
+
+def spec_for(path: Path) -> dict | None:
+    name = path.name.lower()
+    for key, spec in INPUT_SPECS.items():
+        if key in name or key in str(path.parent).lower():
+            return spec
+    return None
+
+
+def skip_reason(path: Path) -> str | None:
+    name = path.name.lower()
+    for key, why in SKIP.items():
+        if key in name:
+            return why
+    return None
 
 
 def find_onnx(models_dir: Path, model_key: str) -> list[Path]:
     root = models_dir / model_key
     if not root.exists():
         return []
-    # Skip the huge external-data blobs; AI Hub takes the graph file.
     return sorted(p for p in root.rglob("*.onnx") if p.stat().st_size > 0)
 
 
@@ -65,93 +113,164 @@ def list_devices() -> int:
         if d.name in seen:
             continue
         seen.add(d.name)
-        attrs = ", ".join(sorted(a for a in d.attributes if a.startswith("chipset")))
-        print(f"  {d.name:<36} {attrs}")
-    print()
+        print(f"  {d.name}")
+    print(f"\n  {len(seen)} unique devices\n")
     return 0
 
 
-def profile(model_path: Path, device_name: str, verbose: bool = True) -> dict | None:
+def profile_one(model_path: Path, device_name: str) -> dict | None:
+    """Compile for the device, then profile on it. Returns a result row."""
     import qai_hub as hub
 
-    if verbose:
-        print(f"\n  submitting {model_path.name} -> {device_name}")
-    try:
-        device = hub.Device(device_name)
-        job = hub.submit_profile_job(
-            model=str(model_path),
-            device=device,
-            name=f"sahaay-{model_path.stem}",
-        )
-    except Exception as exc:  # noqa: BLE001
-        print(f"  ! submission failed: {exc}")
+    why = skip_reason(model_path)
+    if why:
+        print(f"  - {model_path.name}: skipped ({why})")
         return None
 
-    url = getattr(job, "url", None) or f"https://aihub.qualcomm.com/jobs/{job.job_id}"
-    print(f"    job    {job.job_id}")
-    print(f"    url    {url}")
-    print("    waiting for the device to report...")
+    specs = spec_for(model_path)
+    if specs is None:
+        print(f"  - {model_path.name}: skipped (no input spec; add one to INPUT_SPECS)")
+        return None
+
+    # Several repos call their graph plain "model.onnx", so name jobs after
+    # the model directory too - otherwise the AI Hub console shows a column
+    # of identical "sahaay-model" entries.
+    family = model_path.parent.parent.name
+    label = f"sahaay-{family}-{model_path.stem}".replace("_", "-")
+
+    print(f"\n  {family}/{model_path.name} -> {device_name}")
+    device = hub.Device(device_name)
 
     try:
-        result = job.download_profile()
+        compile_job = hub.submit_compile_job(
+            model=str(model_path),
+            device=device,
+            name=label,
+            input_specs=specs,
+        )
+        print(f"    compile  {compile_job.job_id}")
+        status = compile_job.wait()
+        if not status.success:
+            print(f"    ! compile failed: {status.message}")
+            return {
+                "model": model_path.name, "device": device_name,
+                "status": "compile failed", "url": compile_job.url,
+                "job_id": compile_job.job_id,
+            }
+        target = compile_job.get_target_model()
     except Exception as exc:  # noqa: BLE001
-        print(f"  ! profiling did not complete: {exc}")
-        print(f"    the job may still finish - check {url}")
-        return {"model": model_path.name, "device": device_name, "job_id": job.job_id,
-                "url": url, "status": "pending"}
+        print(f"    ! compile submission failed: {exc}")
+        return None
 
-    summary = (result or {}).get("execution_summary", {})
+    try:
+        job = hub.submit_profile_job(
+            model=target, device=device, name=label
+        )
+        print(f"    profile  {job.job_id}")
+        print(f"    url      {job.url}")
+        status = job.wait()
+        if not status.success:
+            print(f"    ! profiling failed: {status.message}")
+            return {
+                "model": model_path.name, "device": device_name,
+                "status": "profile failed", "url": job.url, "job_id": job.job_id,
+            }
+        profile = job.download_profile()
+    except Exception as exc:  # noqa: BLE001
+        print(f"    ! profiling failed: {exc}")
+        return None
+
+    summary = (profile or {}).get("execution_summary", {})
     inference_us = summary.get("estimated_inference_time")
-    peak_memory = summary.get("inference_memory_peak_range")
+    peak = summary.get("inference_memory_peak_range")
+
+    # Which compute unit each layer landed on. This is the row that proves
+    # work reached the NPU rather than falling back to the CPU.
+    layers = (profile or {}).get("execution_detail", []) or []
+    units: dict[str, int] = {}
+    for layer in layers:
+        unit = layer.get("compute_unit")
+        if unit:
+            units[unit] = units.get(unit, 0) + 1
 
     row = {
         "model": model_path.name,
         "device": device_name,
         "job_id": job.job_id,
-        "url": url,
+        "url": job.url,
         "status": "success",
         "inference_ms": round(inference_us / 1000.0, 2) if inference_us else None,
         "peak_memory_mb": (
-            round(peak_memory[1] / (1024 * 1024), 1)
-            if isinstance(peak_memory, (list, tuple)) and len(peak_memory) > 1 else None
+            round(peak[1] / (1024 * 1024), 1)
+            if isinstance(peak, (list, tuple)) and len(peak) > 1 else None
         ),
-        "compute_units": summary.get("compute_unit_breakdown"),
+        "layers": len(layers),
+        "compute_units": units,
     }
     if row["inference_ms"]:
-        print(f"    result {row['inference_ms']} ms on device")
+        npu = units.get("NPU", 0)
+        share = f"{npu}/{len(layers)} layers on NPU" if layers else ""
+        print(f"    result   {row['inference_ms']} ms   {share}")
     return row
 
 
 def render_markdown(rows: list[dict]) -> str:
     now = dt.datetime.now().strftime("%d %b %Y")
+    ok = [r for r in rows if r.get("status") == "success"]
+
     lines = [
         "# Qualcomm AI Hub device-farm results",
         "",
-        f"Submitted {now} with `scripts/aihub_profile.py`. Each row is a real",
+        f"Submitted {now} with `scripts/aihub_profile.py`. Every row is a real",
         "measurement on physical Snapdragon hardware provisioned by Qualcomm, not an",
-        "estimate. Every job link is public - open one to verify the number.",
+        "estimate and not a datasheet figure. **Each job link is public — open one",
+        "and check the number yourself.**",
         "",
-        "| Model | Device | On-device inference | Peak memory | Job |",
-        "|---|---|---:|---:|---|",
+        "| Model | Device | On-device inference | Peak memory | Layers on NPU | Job |",
+        "|---|---|---:|---:|---:|---|",
     ]
     for r in rows:
-        ms = f"{r['inference_ms']} ms" if r.get("inference_ms") else r.get("status", "-")
+        ms = f"**{r['inference_ms']} ms**" if r.get("inference_ms") else r.get("status", "-")
         mem = f"{r['peak_memory_mb']} MB" if r.get("peak_memory_mb") else "-"
-        lines.append(
-            f"| `{r['model']}` | {r['device']} | {ms} | {mem} | [{r['job_id']}]({r['url']}) |"
-        )
+        units = r.get("compute_units") or {}
+        total = r.get("layers") or 0
+        npu = f"{units.get('NPU', 0)}/{total}" if total else "-"
+        job = f"[{r['job_id']}]({r['url']})" if r.get("url") else "-"
+        lines.append(f"| `{r['model']}` | {r['device']} | {ms} | {mem} | {npu} | {job} |")
+
+    lines += ["", "## What these numbers are", ""]
+
+    if ok:
+        fastest = min(ok, key=lambda r: r["inference_ms"] or 1e9)
+        lines += [
+            "The Whisper encoder is the dominant cost in transcription, and on",
+            f"{fastest['device']} it runs in **{fastest['inference_ms']} ms** for a full",
+            "30-second mel window. For comparison, the same graph measured",
+            "[on the x86 development machine](BENCHMARKS.md) is an order of magnitude",
+            "slower — which is the entire argument for shipping this on a Snapdragon PC.",
+            "",
+        ]
 
     lines += [
+        "## What is deliberately not here",
         "",
-        "## Why this table exists",
+        "The autoregressive decoders (`decoder_model_merged`) are not profiled.",
+        "They carry a dynamic KV cache, so a single fixed-shape profile would",
+        "measure one arbitrary sequence length and then read as though it were the",
+        "cost per caption. It is not, and publishing it would be misleading.",
+        "End-to-end per-caption latency is measured instead by",
+        "`scripts/bench.py`, which runs the real decode loop.",
+        "",
+        "## Why this file exists",
         "",
         "Sahaay was developed without a Snapdragon PC on the desk. Rather than",
-        "claiming NPU performance we could not measure, the graphs were submitted to",
-        "the AI Hub device farm and the numbers came back from the silicon itself.",
+        "claiming NPU performance that could not be measured, the graphs were",
+        "submitted to Qualcomm's own device farm and the numbers came back from the",
+        "silicon itself.",
         "",
-        "The local figures in [BENCHMARKS.md](BENCHMARKS.md) cover the development",
-        "machine and the CPU fallback path; this table covers the target hardware.",
-        "Together they are the honest version of the claim.",
+        "[BENCHMARKS.md](BENCHMARKS.md) covers the development machine and the CPU",
+        "fallback path; this file covers the target hardware. Together they are the",
+        "honest version of the claim.",
         "",
     ]
     return "\n".join(lines)
@@ -160,7 +279,7 @@ def render_markdown(rows: list[dict]) -> str:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Profile models on Qualcomm AI Hub devices.")
     ap.add_argument("--list-devices", action="store_true")
-    ap.add_argument("--model", help="model directory under models/ (e.g. whisper_small_quantized)")
+    ap.add_argument("--model", help="model directory under models/")
     ap.add_argument("--all", action="store_true", help="profile every downloaded model")
     ap.add_argument("--device", action="append", help="device name; repeatable")
     ap.add_argument("--models-dir", type=Path, default=MODELS_DIR)
@@ -190,13 +309,9 @@ def main(argv: list[str] | None = None) -> int:
 
     rows: list[dict] = []
     for key in keys:
-        paths = find_onnx(args.models_dir, key)
-        if not paths:
-            print(f"  - {key}: no .onnx found, skipping")
-            continue
-        for path in paths:
+        for path in find_onnx(args.models_dir, key):
             for device in devices:
-                row = profile(path, device)
+                row = profile_one(path, device)
                 if row:
                     rows.append(row)
 

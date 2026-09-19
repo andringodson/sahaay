@@ -97,7 +97,10 @@ class GlossaryConfig:
     batch_lines: int = 3
     # Never re-explain a term inside one session.
     max_terms_per_session: int = 60
-    max_new_tokens: int = 160
+    # Indic scripts cost far more tokens per character than English, so a
+    # budget tuned on English output truncates the last entry of every batch.
+    # Measured: three Hindi glosses need ~200 tokens, not 160.
+    max_new_tokens: int = 256
 
 
 @dataclass

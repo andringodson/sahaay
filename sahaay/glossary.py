@@ -173,6 +173,14 @@ class GlossaryWorker:
             explanation = explanation.strip().strip('"')
             if not term or not explanation or len(term) > 48:
                 continue
+            # Drop truncation artefacts. When generation hits the token
+            # budget mid-word the last entry arrives as a fragment - observed
+            # as "Characteristic Equation :: मैट्र" (5 characters). The
+            # threshold stays low deliberately: "disorder" is a legitimate
+            # eight-character gloss, and an earlier cut of 12 deleted it.
+            if len(explanation) < 6:
+                log.debug("dropping truncated gloss for %r: %r", term, explanation)
+                continue
             out.append(
                 GlossEntry(
                     term=term,

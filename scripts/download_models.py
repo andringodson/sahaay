@@ -120,15 +120,28 @@ MODELS: list[ModelSpec] = [
         tier="snapdragon",
         note="Prebuilt QNN context binaries - skips the local AI Hub compile entirely.",
     ),
+    # The GENAI-ONNX builds are the ones ONNX Runtime GenAI can load directly:
+    # they ship genai_config.json alongside the graph. A plain ONNX export
+    # does not, and GenAI will not load it.
     ModelSpec(
         key="llm",
-        target_dir="llama_3_2_3b_instruct_portable",
-        repo_id="onnx-community/Llama-3.2-3B-Instruct-ONNX",
-        description="Llama 3.2 3B Instruct, generic ONNX (int4)",
-        approx_mb=2100,
-        allow_patterns=["onnx/*int4*", "*.json", "*.model"],
+        target_dir="llama_3_2_3b_instruct_genai",
+        repo_id="onnx-community/Llama-3.2-3B-Instruct-GENAI-ONNX",
+        description="Llama 3.2 3B Instruct, GenAI ONNX (int4, CPU/mobile)",
+        approx_mb=3500,
+        allow_patterns=["cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/*"],
         tier="portable",
-        note="Optional. Without any LLM the glossary uses the seeded heuristic.",
+        note="The glossary model the product ships. Large; skip it to use the 1B.",
+    ),
+    ModelSpec(
+        key="llm",
+        target_dir="llama_3_2_1b_instruct_genai",
+        repo_id="onnx-community/Llama-3.2-1B-Instruct-GENAI-ONNX",
+        description="Llama 3.2 1B Instruct, GenAI ONNX (int4, CPU/mobile)",
+        approx_mb=1780,
+        allow_patterns=["cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4/*"],
+        tier="portable",
+        note="Half the download and adequate for glossary lookups. Set glossary.model_id to use it.",
     ),
 ]
 

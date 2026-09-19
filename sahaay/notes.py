@@ -25,6 +25,13 @@ from .llm import LlmBackend
 
 log = logging.getLogger(__name__)
 
+# A bullet ending on one of these was cut off mid-sentence by the token
+# budget. A bullet ending on a content word is simply short, and short
+# bullets are exactly what a "Topics" list is made of.
+_DANGLING_WORDS = frozenset(
+    ["a", "an", "the", "and", "or", "but", "of", "in", "on", "at", "to", "for", "with", "from", "by", "is", "are", "was", "were", "be", "been", "being", "has", "have", "had", "do", "does", "did", "can", "could", "will", "would", "should", "may", "might", "must", "that", "which", "who", "whom", "whose", "this", "these", "those", "it", "its", "as", "if", "than", "then", "when", "where", "while", "because", "so", "such", "into", "onto", "about", "over", "under", "between"]
+)
+
 
 SUMMARY_PROMPT = """Below is the transcript of a university lecture.
 
@@ -49,12 +56,19 @@ Keep every bullet under 20 words. Use the lecture's own terminology.
 
 QUIZ_PROMPT = """Below is the transcript of a university lecture.
 
-Write exactly {n} short self-test questions covering the main ideas. \
-Each question on its own line, in this format:
+Write exactly {n} short self-test questions covering the main ideas.
 
-Q :: the question :: the answer in one sentence
+Rules:
+- Write each question on its own line, then its answer on the very next line.
+- Separate each question/answer pair with a blank line.
+- The answer must be a direct factual sentence.
+- Do NOT write multiple-choice options. Never write "A)", "B)", "C)" or "D)".
+- Only state things the transcript actually says.
 
-Do not number them. Do not add anything else.
+Example of the required shape:
+
+What is the characteristic equation used for?
+It is used to find the eigenvalues of a matrix.
 
 <transcript>
 {transcript}
@@ -193,21 +207,96 @@ class NotesWriter:
 
     @staticmethod
     def _clean(text: str) -> str:
+        """Normalise model Markdown into the subset the UI renders.
+
+        Two things bite here. Models write "•" or "–" for bullets, which the
+        renderer does not treat as list items, so the notes came out as one
+        run-on paragraph. And when generation hits the token budget the last
+        bullet arrives half-written ("Real eigenvalues are "), which reads as
+        a bug rather than a limit.
+        """
         # Models often restate the prompt or open with "Sure!".
         text = re.sub(r"^\s*(sure|here (is|are)|certainly)[^\n]*\n", "", text, flags=re.I)
-        return text.strip()
 
-    @staticmethod
-    def _parse_quiz(text: str) -> list[QuizItem]:
+        lines = [re.sub(r"^\s*[•‣▪–—]\s+", "- ", ln) for ln in text.strip().splitlines()]
+
+        # Drop a trailing bullet only when it was genuinely cut mid-sentence.
+        # Length is the wrong signal - "- Eigenvalues" is a perfectly good
+        # entry in a Topics list, and an earlier length-based rule deleted
+        # every short bullet. Ending on a function word is the real tell:
+        # "- Real eigenvalues are" was cut, "- Eigenvalues" was not.
+        if lines:
+            last = lines[-1].strip()
+            if last.startswith("- ") and not last.endswith((".", "!", "?", ":", ")", "।")):
+                words = last[2:].split()
+                if words and words[-1].lower() in _DANGLING_WORDS:
+                    lines.pop()
+
+        return "\n".join(lines).strip()
+
+    # Leading decoration on a question line: "Q ::", "Q:", "1.".
+    # Bullets are deliberately absent - an answer beginning "- " would
+    # otherwise be mistaken for a new question.
+    _Q_MARKER = re.compile(r"^\s*(?:Q\s*::|Q\s*[:.)]|\d+\s*[.)])\s*", re.I)
+    # Models slip into multiple choice whatever the prompt says.
+    _MULTIPLE_CHOICE = re.compile(r"\b[B-D]\)\s")
+    # Leading decoration on an answer line: "A:", "Answer -", "A ::".
+    _A_MARKER = re.compile(r"^\s*(?:A\s*::|A\s*[:.)]|answer\s*[:.\-]?)\s*", re.I)
+
+    @classmethod
+    def _parse_quiz(cls, text: str) -> list[QuizItem]:
+        """Parse a quiz out of whatever shape the model produced.
+
+        The prompt asks for ``Q :: question :: answer``. Llama 3.2 gave three
+        different shapes across three runs: that one, ``Q :: question`` with
+        the answer on the next line, and - once a repetition penalty was
+        added - no markers at all, just a question line followed by an answer
+        line. A parser keyed to one shape returned zero items from output
+        that was otherwise perfectly good.
+
+        So parse structurally instead: split on blank lines, treat the first
+        line of each block as the question and the rest as the answer, and
+        strip whatever decoration is present. That survives a model swap,
+        which prompt-wording tricks do not.
+        """
         items: list[QuizItem] = []
-        for line in text.splitlines():
-            line = line.strip()
-            if line.count("::") < 2:
+        pending: str | None = None
+        answer_lines: list[str] = []
+
+        def flush() -> None:
+            nonlocal pending, answer_lines
+            if pending:
+                answer = cls._A_MARKER.sub("", " ".join(answer_lines)).strip()
+                # An "answer" that is really a list of options is worse than
+                # no question at all - the card would show no answer.
+                if answer and not cls._MULTIPLE_CHOICE.search(answer):
+                    items.append(QuizItem(question=pending, answer=answer))
+            pending, answer_lines = None, []
+
+        for raw in text.splitlines():
+            line = raw.strip()
+            if not line:
+                # Blank lines carry no meaning: models put one between the
+                # question and its answer as readily as between pairs.
                 continue
-            _, question, answer = [p.strip() for p in line.split("::", 2)]
-            question = re.sub(r"^[\-\*\d\.\)\s]+", "", question)
-            if question and answer:
-                items.append(QuizItem(question=question, answer=answer))
+
+            head = cls._Q_MARKER.sub("", line).strip()
+            marked = head != line
+
+            question, sep, inline = head.partition("::")
+            if sep and question.strip() and inline.strip():
+                flush()
+                pending, answer_lines = question.strip(), [inline.strip()]
+                flush()
+                continue
+
+            if head.endswith("?") or (marked and not answer_lines):
+                flush()
+                pending = head
+            elif pending:
+                answer_lines.append(head)
+
+        flush()
         return items
 
     def _fallback_summary(self, captions: list[CaptionRecord], glossary: list[GlossEntry]) -> str:
