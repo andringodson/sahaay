@@ -294,7 +294,7 @@ def main(argv: list[str] | None = None) -> int:
             breaches.append(key)
 
     exempt = list(caps) + sorted(unbounded_by_design)
-    thresholds = {**flat_thresholds, **{k: 1e9 for k in exempt}}
+    thresholds = {**flat_thresholds, **dict.fromkeys(exempt, 1000000000.0)}
     verdict = "pass - nothing grows without bound" if not breaches else (
         f"FAIL - unbounded growth in {', '.join(breaches)}"
     )

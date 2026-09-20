@@ -235,12 +235,23 @@ The primary user may be reading the lecture rather than hearing it, so this is t
 - Space toggles start/stop; Escape closes the notes sheet
 - The whole UI is keyboard reachable with visible focus rings
 
-## Privacy
+## Privacy — proven, not asserted
 
 - The server binds to `127.0.0.1` only — never the LAN
 - No telemetry, no analytics, no accounts, no API keys
 - Audio is never written to disk; only the transcript you chose to save
 - Sessions go to `sessions/` as plain Markdown you can read, move or delete
+
+`tests/test_offline.py` **enforces** this. It monkeypatches `socket` so any
+connection or DNS lookup to anything but loopback raises, then runs a full
+session — segmentation, ASR, translation, glossary, notes — and asserts
+nothing tried. The guard self-tests first, because a guard that never fires
+proves nothing. Nothing under `sahaay/` may import an HTTP client at all.
+
+```
+$ pytest tests/test_offline.py
+12 passed
+```
 
 ## Development
 
