@@ -1,0 +1,14 @@
+# Vercel only serves web/. Everything else is source for the application that
+# deliberately does not run here - and models/ is well over a gigabyte.
+models/
+sessions/
+bench_results/
+testaudio/
+tests/
+scripts/
+docs/
+.github/
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/

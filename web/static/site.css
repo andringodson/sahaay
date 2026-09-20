@@ -1,0 +1,290 @@
+/* Landing page for the hosted site.
+   Shares the product's palette so the demo does not feel like a different
+   application, but this is a document, not an app: it scrolls, it has a
+   readable measure, and it is light-on-dark for the same reason the UI is. */
+
+:root {
+  --bg: #0d1014;
+  --surface: #151a21;
+  --surface-2: #1c232c;
+  --line: #262f3a;
+  --text: #e8edf3;
+  --text-dim: #8d9aab;
+  --accent: #4db8ff;
+  --accent-dim: #1d4a66;
+  --npu: #00d68f;
+  --warn: #ffb020;
+  --danger: #ff5c5c;
+  --radius: 12px;
+  --measure: 68ch;
+}
+
+/* The product UI follows prefers-color-scheme, so this has to as well -
+   otherwise a visitor on a light desktop gets a dark document and then a
+   light application one click later. Same tokens as sahaay/ui/style.css. */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f6f8fb;
+    --surface: #ffffff;
+    --surface-2: #eef2f7;
+    --line: #d7dfe8;
+    --text: #131920;
+    --text-dim: #5a6775;
+    --accent: #0b6fb8;
+    --accent-dim: #cfe6f7;
+    --npu: #00845c;
+    --warn: #9a6200;
+    --danger: #c62828;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 400 17px/1.65 "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  width: min(100% - 2.5rem, 78ch);
+  margin-inline: auto;
+}
+
+h1, h2, h3 { line-height: 1.2; letter-spacing: -0.02em; margin: 0; font-weight: 600; }
+h2 { font-size: clamp(1.4rem, 1.1rem + 1vw, 1.9rem); margin-bottom: 0.9rem; }
+p { max-width: var(--measure); }
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+em { color: var(--text); font-style: italic; }
+
+code {
+  font-family: "Cascadia Code", "Consolas", ui-monospace, monospace;
+  font-size: 0.87em;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 0.1em 0.38em;
+}
+
+pre {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem 1.15rem;
+  overflow-x: auto;
+  max-width: var(--measure);
+}
+pre code { background: none; border: 0; padding: 0; font-size: 0.9rem; line-height: 1.7; }
+
+/* ---------- hero ---------- */
+
+.hero {
+  padding: clamp(2.5rem, 1rem + 7vw, 5.5rem) 0 clamp(2rem, 1rem + 4vw, 3.5rem);
+  background:
+    radial-gradient(60rem 30rem at 15% -10%, rgba(77, 184, 255, 0.11), transparent 70%),
+    radial-gradient(45rem 26rem at 95% 0%, rgba(0, 214, 143, 0.07), transparent 70%);
+  border-bottom: 1px solid var(--line);
+}
+
+@media (prefers-color-scheme: light) {
+  .hero {
+    background:
+      radial-gradient(60rem 30rem at 15% -10%, rgba(11, 111, 184, 0.07), transparent 70%),
+      radial-gradient(45rem 26rem at 95% 0%, rgba(0, 132, 92, 0.05), transparent 70%);
+  }
+  .btn-primary { color: #ffffff; }
+}
+
+.brand { display: flex; align-items: center; gap: 0.85rem; margin-bottom: 1.6rem; }
+.logo { font-size: 2.4rem; color: var(--accent); line-height: 1; }
+.brand h1 { font-size: 2.1rem; }
+.tag { margin: 0.1rem 0 0; color: var(--text-dim); font-size: 0.93rem; }
+
+.lede {
+  font-size: clamp(1.15rem, 1rem + 0.75vw, 1.5rem);
+  line-height: 1.45;
+  max-width: 30ch;
+  margin: 0 0 1.8rem;
+}
+.lede em { color: var(--accent); font-style: normal; }
+
+.cta { display: flex; flex-wrap: wrap; gap: 0.7rem; margin-bottom: 1.8rem; }
+
+.btn {
+  display: inline-block;
+  padding: 0.62rem 1.15rem;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.btn:hover { border-color: var(--accent); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #06131c; }
+.btn-primary:hover { filter: brightness(1.08); }
+
+.note { color: var(--text-dim); font-size: 0.88rem; max-width: 58ch; margin: 0; }
+.note strong { color: var(--text); font-weight: 500; }
+
+/* ---------- sections ---------- */
+
+main { padding: clamp(2rem, 1rem + 4vw, 3.5rem) 0; }
+section { margin-bottom: clamp(2.5rem, 1.5rem + 4vw, 4rem); }
+
+.feature {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: clamp(1.4rem, 1rem + 2vw, 2.2rem);
+}
+
+.claim {
+  font-size: clamp(1.1rem, 1rem + 0.7vw, 1.35rem);
+  line-height: 1.45;
+  color: var(--text);
+  border-left: 3px solid var(--accent);
+  padding-left: 1rem;
+  margin: 0 0 1.2rem;
+}
+.claim strong { color: var(--accent); }
+
+.src { font-size: 0.9rem; margin-bottom: 0; }
+
+.caveat {
+  background: rgba(255, 176, 32, 0.07);
+  border: 1px solid rgba(255, 176, 32, 0.28);
+  border-radius: 10px;
+  padding: 0.85rem 1.05rem;
+  font-size: 0.93rem;
+  color: var(--text-dim);
+}
+.caveat strong { color: var(--warn); }
+
+/* ---------- tables ---------- */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.1rem 0 1.3rem;
+  font-size: 0.93rem;
+  font-variant-numeric: tabular-nums;
+}
+caption {
+  caption-side: top;
+  text-align: left;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  padding-bottom: 0.6rem;
+}
+th, td { text-align: left; padding: 0.6rem 0.7rem; border-bottom: 1px solid var(--line); }
+th { color: var(--text-dim); font-weight: 500; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; }
+td:not(:first-child), th:not(:first-child) { text-align: right; }
+table.compact td:not(:first-child), table.compact th:not(:first-child) { text-align: right; }
+tbody tr:last-child td { border-bottom: 0; }
+
+tr.good td { background: rgba(0, 214, 143, 0.06); }
+tr.bad td { background: rgba(255, 92, 92, 0.06); }
+tr.bad strong { color: var(--danger); }
+tr.good strong { color: var(--npu); }
+.good-cell strong { color: var(--npu); }
+
+/* ---------- pipeline ---------- */
+
+.pipeline {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+  margin: 1.4rem 0;
+}
+
+.stage {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 0.85rem 1rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.2rem 0.8rem;
+  align-items: baseline;
+}
+.stage strong { font-weight: 600; }
+.stage > span:last-child {
+  grid-column: 2;
+  color: var(--text-dim);
+  font-size: 0.89rem;
+  line-height: 1.5;
+}
+
+.where {
+  grid-row: span 2;
+  align-self: start;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 0.22rem 0.42rem;
+  border-radius: 5px;
+  border: 1px solid;
+}
+.where.npu { color: var(--npu); border-color: rgba(0, 214, 143, 0.4); background: rgba(0, 214, 143, 0.08); }
+.where.cpu { color: var(--text-dim); border-color: var(--line); background: var(--surface-2); }
+.where.target { color: var(--warn); border-color: rgba(255, 176, 32, 0.4); background: rgba(255, 176, 32, 0.08); }
+
+/* The legend reuses the badges, so it cannot drift from the diagram. */
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.3rem;
+          font-size: 0.83rem; color: var(--text-dim); max-width: none; margin-top: 1rem; }
+.legend .where { grid-row: auto; }
+
+.arrow { color: var(--line); text-align: center; font-size: 1.1rem; line-height: 1; }
+
+/* ---------- stats ---------- */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  gap: 0.7rem;
+  margin: 1.3rem 0;
+}
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 1rem;
+}
+.stat b {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--npu);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.stat span { display: block; color: var(--text-dim); font-size: 0.83rem; line-height: 1.45; margin-top: 0.25rem; }
+
+/* ---------- gaps ---------- */
+
+.gaps { max-width: var(--measure); padding-left: 1.1rem; margin: 0; }
+.gaps li { margin-bottom: 0.8rem; color: var(--text-dim); }
+.gaps li strong { color: var(--text); font-weight: 500; }
+.gaps li:last-child { margin-bottom: 0; }
+
+/* ---------- footer ---------- */
+
+footer {
+  border-top: 1px solid var(--line);
+  padding: 1.8rem 0 3rem;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+footer p { max-width: none; }
+.small { font-size: 0.82rem; margin-bottom: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}

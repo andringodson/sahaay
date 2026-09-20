@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sahaay — offline lecture captioning for Snapdragon PCs</title>
+<meta name="description" content="Live lecture captions, Indian-language translation and a jargon glossary, running entirely on a Snapdragon PC. No audio leaves the device.">
+<meta property="og:title" content="Sahaay — offline lecture captioning for Snapdragon PCs">
+<meta property="og:description" content="Whisper, NLLB and Llama running side by side on-device. The glossary costs captions 7× on a CPU — which is the argument for the NPU.">
+<meta property="og:type" content="website">
+<link rel="stylesheet" href="static/site.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎧</text></svg>">
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">◑</span>
+      <div>
+        <h1>Sahaay</h1>
+        <p class="tag">सहाय · offline lecture companion</p>
+      </div>
+    </div>
+
+    <p class="lede">
+      Live captions, Indian-language translation and a jargon glossary for any
+      lecture playing on your screen — all of it running <em>on the machine</em>,
+      with the network switched off.
+    </p>
+
+    <div class="cta">
+      <a class="btn btn-primary" href="demo/?play=1">Watch a recorded session</a>
+      <a class="btn" href="https://github.com/andringodson/sahaay">Source on GitHub</a>
+    </div>
+
+    <p class="note">
+      Built for the Snapdragon<sup>®</sup> AI Lab Build &amp; Present Challenge 2026.
+      This page is documentation and a replay — <strong>the product itself only
+      runs locally</strong>, which is the whole point of it.
+    </p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ---------------------------------------------------------------- -->
+  <section>
+    <h2>The problem</h2>
+    <p>
+      A student in a regional-language school sits in an online lecture
+      delivered in fast English, dense with terms that have no everyday
+      translation — <em>eigenvalue</em>, <em>determinant</em>,
+      <em>characteristic equation</em>. Captions help. Captions in their own
+      language help more. Captions that also explain the jargon are the
+      difference between following the lecture and losing the thread.
+    </p>
+    <p>
+      Cloud captioning can do this. It also requires bandwidth the student may
+      not have, and it means every lecture they attend leaves their machine.
+      Sahaay does it locally instead: three models, one laptop, no network.
+    </p>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section class="feature">
+    <h2>Why this needs an NPU</h2>
+    <p class="claim">
+      Turning on the glossary makes captions <strong>seven times slower</strong>
+      on a CPU.
+    </p>
+    <p>
+      This is the measurement the project is built around. Sahaay runs Whisper
+      and a language model at the same time, for an hour. On one set of CPU
+      cores they compete directly, and the captions — the thing the user is
+      actually reading — are what lose.
+    </p>
+
+    <table>
+      <caption>Whisper latency on the same clip, with and without the glossary model running. CPU, x86.</caption>
+      <thead>
+        <tr><th>Whisper latency</th><th>Mean</th><th>p95</th><th>Real-time factor</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Glossary idle</td><td>343.7 ms</td><td>374.3 ms</td><td>0.043</td></tr>
+        <tr class="bad"><td>Glossary generating</td><td><strong>2390.7 ms</strong></td><td>3063.9 ms</td><td><strong>0.299</strong></td></tr>
+      </tbody>
+    </table>
+
+    <p>
+      A 6.96× slowdown is not a tuning problem — it is two compute-bound models
+      on one processor. Moving the Whisper encoder onto the Hexagon NPU removes
+      exactly this contention, and it is why the application belongs on a
+      Snapdragon PC rather than anywhere else.
+    </p>
+    <p class="src"><a href="https://github.com/andringodson/sahaay/blob/main/docs/CONCURRENCY.md">Method and full results →</a></p>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section class="feature">
+    <h2>Measured on Snapdragon silicon</h2>
+    <p>
+      Sahaay was developed without a Snapdragon PC on the desk. Rather than
+      claim NPU performance that could not be verified, the graphs went to
+      Qualcomm's own device farm. <strong>Every job link below is public — open
+      one and check the number.</strong>
+    </p>
+
+    <table>
+      <caption>Whisper encoder, one full 30-second mel window, via Qualcomm AI Hub.</caption>
+      <thead>
+        <tr><th>Device</th><th>Inference</th><th>Peak memory</th><th>Layers on NPU</th><th>Job</th></tr>
+      </thead>
+      <tbody>
+        <tr class="good">
+          <td>Snapdragon X2 Elite CRD</td><td><strong>13.47 ms</strong></td><td>9.2 MB</td><td>129 / 129</td>
+          <td><a href="https://workbench.aihub.qualcomm.com/jobs/jglyo70e5/">jglyo70e5</a></td>
+        </tr>
+        <tr>
+          <td>Snapdragon X Elite CRD</td><td>27.56 ms</td><td>17.0 MB</td><td>129 / 129</td>
+          <td><a href="https://workbench.aihub.qualcomm.com/jobs/j5m0o4zyg/">j5m0o4zyg</a></td>
+        </tr>
+        <tr>
+          <td>Snapdragon X Plus 8-Core CRD</td><td>26.76 ms</td><td>16.8 MB</td><td>129 / 129</td>
+          <td><a href="https://workbench.aihub.qualcomm.com/jobs/jpxl3m7jp/">jpxl3m7jp</a></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>
+      <strong>129 of 129 layers</strong> execute on the NPU — nothing falls back
+      to the CPU. The decoders are deliberately absent from this table; they
+      carry a dynamic KV cache, so a single fixed-shape profile would measure
+      one arbitrary sequence length and read as though it were the cost per
+      caption. It is not.
+    </p>
+    <p class="src"><a href="https://github.com/andringodson/sahaay/blob/main/docs/AIHUB.md">All device-farm results →</a></p>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section>
+    <h2>How it fits together</h2>
+    <div class="pipeline">
+      <div class="stage"><span class="where cpu">CPU</span><strong>WASAPI loopback</strong><span>Captures whatever is playing — Zoom, YouTube, a recording. No virtual cable, no driver install.</span></div>
+      <div class="arrow" aria-hidden="true">↓</div>
+      <div class="stage"><span class="where cpu">CPU</span><strong>Silero VAD</strong><span>Splits on pauses, not on a fixed clock, so captions break where sentences do. Tiny, and on the CPU by design.</span></div>
+      <div class="arrow" aria-hidden="true">↓</div>
+      <div class="stage"><span class="where npu">NPU</span><strong>Whisper Small</strong><span>Transcription and per-segment language detection. Its encoder is the graph measured above — 129 of 129 layers on the NPU.</span></div>
+      <div class="arrow" aria-hidden="true">↓</div>
+      <div class="stage"><span class="where target">NPU target</span><strong>NLLB-200</strong><span>Translation into eight Indian languages, with technical terms protected from being translated into nonsense. Runs through the QNN provider where it is available; not separately profiled.</span></div>
+      <div class="arrow" aria-hidden="true">↓</div>
+      <div class="stage"><span class="where target">NPU target</span><strong>Llama 3.2</strong><span>Jargon glossary while the lecture runs; notes and a self-test when it ends. Ships Hexagon assets for Snapdragon; falls back to an int4 CPU build.</span></div>
+    </div>
+
+    <p class="legend">
+      <span class="where npu">NPU</span> measured on Snapdragon silicon &nbsp;
+      <span class="where target">NPU target</span> built for it, not yet profiled &nbsp;
+      <span class="where cpu">CPU</span> stays on the CPU by design
+    </p>
+    <p class="src"><a href="https://github.com/andringodson/sahaay/blob/main/docs/ARCHITECTURE.md">Architecture in detail →</a></p>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section>
+    <h2>The detail that matters most</h2>
+    <p>
+      A student can work around a garbled function word. A garbled
+      <em>eigenvalue</em> breaks the link to the textbook — so technical terms
+      are scored separately from everything else, and protected through
+      translation rather than left to chance.
+    </p>
+    <table class="compact">
+      <thead><tr><th>Set</th><th>Utterances</th><th>Word error rate</th><th>Technical terms kept</th></tr></thead>
+      <tbody>
+        <tr><td>English</td><td>4</td><td class="good-cell"><strong>0.0%</strong></td><td>8 / 8</td></tr>
+        <tr><td>Code-mixed</td><td>3</td><td>63.6%</td><td>6 / 6</td></tr>
+        <tr><td><strong>All</strong></td><td>7</td><td>23.7%</td><td><strong>14 / 14</strong></td></tr>
+      </tbody>
+    </table>
+    <p class="caveat">
+      <strong>Read this honestly:</strong> the audio is synthesised by Windows
+      SAPI, not spoken by people, and only an en-US voice is installed — so the
+      code-mixed row is read with English phonetics. These numbers are a floor,
+      not a forecast. Expect materially worse on a real lecture recording.
+    </p>
+    <p class="src"><a href="https://github.com/andringodson/sahaay/blob/main/docs/ACCURACY.md">Per-utterance results →</a></p>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section>
+    <h2>Does it survive a whole lecture?</h2>
+    <div class="stats">
+      <div class="stat"><b>+0.01 MB</b><span>memory growth per simulated minute, over 60</span></div>
+      <div class="stat"><b>4 → 4</b><span>threads, start to finish — nothing leaks</span></div>
+      <div class="stat"><b>0</b><span>segment-queue backlog at the end</span></div>
+      <div class="stat"><b>257</b><span>tests, green on Windows and Linux</span></div>
+    </div>
+    <p>
+      Every other test in the repo runs for seconds. The failure modes of an
+      hour are different in kind: unbounded lists, queues that only grow, event
+      history that accumulates, threads that leak. So the soak test reports
+      <em>slope</em>, not a single number.
+    </p>
+    <p class="src"><a href="https://github.com/andringodson/sahaay/blob/main/docs/SOAK.md">Soak method →</a></p>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section class="feature">
+    <h2>Offline is tested, not asserted</h2>
+    <p>
+      "Runs offline" is easy to put on a slide. In this repo it is a test:
+      <code>tests/test_offline.py</code> patches the socket layer so any
+      non-loopback connection or DNS lookup raises, then runs a full session
+      and asserts nothing tried. The guard self-tests first — a guard that
+      never fires would make the whole test vacuous.
+    </p>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section>
+    <h2>Run it yourself</h2>
+    <p>Windows on ARM64 or x86. The installer picks the right model tier for the machine it lands on.</p>
+<pre><code>git clone https://github.com/andringodson/sahaay
+cd sahaay
+.\install.ps1
+.\run.bat</code></pre>
+    <p>
+      Then <code>.\run.bat --selftest</code> reports what works, what is
+      degraded and what failed — and every line that is not OK says what to do
+      about it. No Snapdragon device? It runs on CPU, more slowly, and the
+      badge in the header says so rather than pretending.
+    </p>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section class="feature">
+    <h2>What is not proven yet</h2>
+    <p>Stated here rather than left for a judge to find:</p>
+    <ul class="gaps">
+      <li>
+        <strong>The full three-model pipeline has never run on physical
+        Snapdragon hardware.</strong> Individual graphs have, on Qualcomm's
+        device farm, at 129/129 layers on the NPU. The end-to-end run on one
+        machine has not.
+      </li>
+      <li>
+        <strong>Word error rate is measured against synthesised speech</strong>,
+        not real speakers — no accent, no room, no crosstalk, no disfluency.
+      </li>
+      <li>
+        <strong>The NPU column of the concurrency table is empty.</strong> The
+        7× slowdown is the CPU half of the comparison; the half that closes the
+        argument needs a Snapdragon PC and one command.
+      </li>
+    </ul>
+  </section>
+
+</main>
+
+<footer class="wrap">
+  <p>
+    <a href="https://github.com/andringodson/sahaay">GitHub</a> ·
+    <a href="demo/?play=1">Recorded session</a> ·
+    <a href="https://github.com/andringodson/sahaay/blob/main/docs/ARCHITECTURE.md">Architecture</a> ·
+    <a href="https://github.com/andringodson/sahaay/blob/main/docs/BENCHMARKS.md">Benchmarks</a> ·
+    <a href="https://github.com/andringodson/sahaay/blob/main/docs/AIHUB.md">AI Hub</a>
+  </p>
+  <p class="small">
+    MIT licensed. Sahaay is not affiliated with Qualcomm or HP. Snapdragon is a
+    trademark of Qualcomm Incorporated.
+  </p>
+</footer>
+
+</body>
+</html>

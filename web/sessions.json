@@ -1,0 +1,28 @@
+{
+ "sessions": [
+  {
+   "code": "hi",
+   "name": "हिन्दी (Hindi)",
+   "file": "session.hi.json",
+   "mode": "real",
+   "captions": 18,
+   "duration_s": 121.944
+  },
+  {
+   "code": "ta",
+   "name": "தமிழ் (Tamil)",
+   "file": "session.ta.json",
+   "mode": "real",
+   "captions": 18,
+   "duration_s": 121.991
+  },
+  {
+   "code": "bn",
+   "name": "বাংলা (Bengali)",
+   "file": "session.bn.json",
+   "mode": "real",
+   "captions": 18,
+   "duration_s": 121.447
+  }
+ ]
+}

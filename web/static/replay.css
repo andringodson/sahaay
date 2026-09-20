@@ -1,0 +1,28 @@
+/* Added by scripts/build_web.py - not part of the product UI. */
+.replay-banner {
+  padding: 0.6rem var(--gap);
+  background: var(--accent-dim);
+  color: var(--text);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  border-bottom: 1px solid var(--line);
+}
+.replay-banner a { color: var(--accent); white-space: nowrap; }
+.replay-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+/* On a phone the banner is pure overhead above the thing people came to
+   see. body is overflow:hidden, so every line it takes comes straight out
+   of the caption area - measured at 144px of captions on a 844px screen.
+   Drop the explanation and the replay-speed control; the link stays. */
+@media (max-width: 40rem) {
+  .replay-banner { font-size: 0.78rem; padding: 0.45rem var(--gap); }
+  .replay-long { display: none; }
+  .replay-controls { display: none; }
+}

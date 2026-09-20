@@ -1,0 +1,1525 @@
+{
+ "recorded_with": "scripts/record_demo.py",
+ "mode": "real",
+ "audio_file": "lecture_long.wav",
+ "target_language": "hi",
+ "duration_s": 121.944,
+ "event_counts": {
+  "status": 7,
+  "partial": 18,
+  "caption": 18,
+  "translation": 18,
+  "metric": 18,
+  "gloss": 4,
+  "notes": 1
+ },
+ "events": [
+  {
+   "kind": "status",
+   "t": 0.0,
+   "stage": "loading",
+   "detail": "speech recognition",
+   "running": false,
+   "device": {
+    "provider": "CPUExecutionProvider",
+    "provider_label": "CPU",
+    "available_providers": [
+     "AzureExecutionProvider",
+     "CPUExecutionProvider"
+    ],
+    "ort_version": "1.23.2",
+    "machine": "AMD64",
+    "processor": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD",
+    "is_arm64": false,
+    "npu_active": false,
+    "fallback_reason": "QNN not installed; Dml not installed",
+    "qnn_hardware": null
+   },
+   "captions": 0,
+   "glossary": 0,
+   "target_language": "hi",
+   "mock": false,
+   "metrics": {
+    "uptime_s": 0.1,
+    "audio_seconds": 0.0,
+    "realtime_factor": 0.0,
+    "stages": []
+   }
+  },
+  {
+   "kind": "status",
+   "t": 2.471,
+   "stage": "loading",
+   "detail": "translation",
+   "running": false,
+   "device": {
+    "provider": "CPUExecutionProvider",
+    "provider_label": "CPU",
+    "available_providers": [
+     "AzureExecutionProvider",
+     "CPUExecutionProvider"
+    ],
+    "ort_version": "1.23.2",
+    "machine": "AMD64",
+    "processor": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD",
+    "is_arm64": false,
+    "npu_active": false,
+    "fallback_reason": "QNN not installed; Dml not installed",
+    "qnn_hardware": null
+   },
+   "captions": 0,
+   "glossary": 0,
+   "target_language": "hi",
+   "mock": false,
+   "metrics": {
+    "uptime_s": 2.6,
+    "audio_seconds": 0.0,
+    "realtime_factor": 0.0,
+    "stages": []
+   }
+  },
+  {
+   "kind": "status",
+   "t": 11.329,
+   "stage": "loading",
+   "detail": "language model",
+   "running": false,
+   "device": {
+    "provider": "CPUExecutionProvider",
+    "provider_label": "CPU",
+    "available_providers": [
+     "AzureExecutionProvider",
+     "CPUExecutionProvider"
+    ],
+    "ort_version": "1.23.2",
+    "machine": "AMD64",
+    "processor": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD",
+    "is_arm64": false,
+    "npu_active": false,
+    "fallback_reason": "QNN not installed; Dml not installed",
+    "qnn_hardware": null
+   },
+   "captions": 0,
+   "glossary": 0,
+   "target_language": "hi",
+   "mock": false,
+   "metrics": {
+    "uptime_s": 11.4,
+    "audio_seconds": 0.0,
+    "realtime_factor": 0.0,
+    "stages": []
+   }
+  },
+  {
+   "kind": "status",
+   "t": 11.329,
+   "stage": "ready",
+   "running": false,
+   "device": {
+    "provider": "CPUExecutionProvider",
+    "provider_label": "CPU",
+    "available_providers": [
+     "AzureExecutionProvider",
+     "CPUExecutionProvider"
+    ],
+    "ort_version": "1.23.2",
+    "machine": "AMD64",
+    "processor": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD",
+    "is_arm64": false,
+    "npu_active": false,
+    "fallback_reason": "QNN not installed; Dml not installed",
+    "qnn_hardware": null
+   },
+   "captions": 0,
+   "glossary": 0,
+   "target_language": "hi",
+   "mock": false,
+   "metrics": {
+    "uptime_s": 11.4,
+    "audio_seconds": 0.0,
+    "realtime_factor": 0.0,
+    "stages": []
+   }
+  },
+  {
+   "kind": "status",
+   "t": 11.39,
+   "running": true,
+   "device": {
+    "provider": "CPUExecutionProvider",
+    "provider_label": "CPU",
+    "available_providers": [
+     "AzureExecutionProvider",
+     "CPUExecutionProvider"
+    ],
+    "ort_version": "1.23.2",
+    "machine": "AMD64",
+    "processor": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD",
+    "is_arm64": false,
+    "npu_active": false,
+    "fallback_reason": "QNN not installed; Dml not installed",
+    "qnn_hardware": null
+   },
+   "captions": 0,
+   "glossary": 0,
+   "target_language": "hi",
+   "mock": false,
+   "metrics": {
+    "uptime_s": 0.1,
+    "audio_seconds": 0.0,
+    "realtime_factor": 0.0,
+    "stages": []
+   }
+  },
+  {
+   "kind": "partial",
+   "t": 13.556,
+   "text": "...",
+   "index": 0
+  },
+  {
+   "kind": "caption",
+   "t": 15.787,
+   "index": 0,
+   "text": "Good morning everyone.",
+   "language": "en",
+   "start_s": 0.0,
+   "latency_ms": 2231.4,
+   "rtf": 1.025,
+   "provider": "CPUExecutionProvider"
+  },
+  {
+   "kind": "translation",
+   "t": 17.046,
+   "index": 0,
+   "text": "सभी को शुभ दोपहर।",
+   "target_language": "hi",
+   "latency_ms": 1257.7,
+   "passthrough": false,
+   "protected_terms": []
+  },
+  {
+   "kind": "metric",
+   "t": 17.046,
+   "uptime_s": 5.7,
+   "audio_seconds": 5.7,
+   "realtime_factor": 0.392,
+   "stages": [
+    {
+     "stage": "vad",
+     "count": 178,
+     "mean_ms": 1.1,
+     "p50_ms": 1.0,
+     "p95_ms": 2.5,
+     "min_ms": 0.5,
+     "max_ms": 4.9
+    },
+    {
+     "stage": "asr",
+     "count": 1,
+     "mean_ms": 2231.5,
+     "p50_ms": 2231.5,
+     "p95_ms": 2231.5,
+     "min_ms": 2231.5,
+     "max_ms": 2231.5
+    },
+    {
+     "stage": "translate",
+     "count": 1,
+     "mean_ms": 1257.8,
+     "p50_ms": 1257.8,
+     "p95_ms": 1257.8,
+     "min_ms": 1257.8,
+     "max_ms": 1257.8
+    }
+   ]
+  },
+  {
+   "kind": "partial",
+   "t": 18.426,
+   "text": "...",
+   "index": 1
+  },
+  {
+   "kind": "caption",
+   "t": 20.934,
+   "index": 1,
+   "text": "Today we will start with eigenvalues and eigenvectors.",
+   "language": "en",
+   "start_s": 2.55,
+   "latency_ms": 2506.8,
+   "rtf": 0.56,
+   "provider": "CPUExecutionProvider"
+  },
+  {
+   "kind": "translation",
+   "t": 23.738,
+   "index": 1,
+   "text": "आज हम eigenvalues और eigenvectors के साथ शुरू करेंगे।",
+   "target_language": "hi",
+   "latency_ms": 2803.9,
+   "passthrough": false,
+   "protected_terms": [
+    "eigenvectors",
+    "eigenvalues"
+   ]
+  },
+  {
+   "kind": "metric",
+   "t": 23.738,
+   "uptime_s": 12.4,
+   "audio_seconds": 12.4,
+   "realtime_factor": 0.383,
+   "stages": [
+    {
+     "stage": "vad",
+     "count": 387,
+     "mean_ms": 1.2,
+     "p50_ms": 1.0,
+     "p95_ms": 2.7,
+     "min_ms": 0.5,
+     "max_ms": 5.3
+    },
+    {
+     "stage": "asr",
+     "count": 2,
+     "mean_ms": 2369.3,
+     "p50_ms": 2507.1,
+     "p95_ms": 2507.1,
+     "min_ms": 2231.5,
+     "max_ms": 2507.1
+    },
+    {
+     "stage": "translate",
+     "count": 2,
+     "mean_ms": 2030.9,
+     "p50_ms": 2804.0,
+     "p95_ms": 2804.0,
+     "min_ms": 1257.8,
+     "max_ms": 2804.0
+    }
+   ]
+  },
+  {
+   "kind": "partial",
+   "t": 26.323,
+   "text": "...",
+   "index": 2
+  },
+  {
+   "kind": "caption",
+   "t": 29.041,
+   "index": 2,
+   "text": "These two ideas sit at the center of linear algebra, so it is worth going slowly.",
+   "language": "en",
+   "start_s": 8.09,
+   "latency_ms": 2718.3,
+   "rtf": 0.397,
+   "provider": "CPUExecutionProvider"
+  },
+  {
+   "kind": "translation",
+   "t": 33.514,
+   "index": 2,
+   "text": "ये दो विचार रैखिक बीजगणित के केंद्र में हैं, इसलिए यह धीमी गति से आगे बढ़ना लायक है।",
+   "target_language": "hi",
+   "latency_ms": 4472.8,
+   "passthrough": false,
+   "protected_terms": []
+  },
+  {
+   "kind": "metric",
+   "t": 33.515,
+   "uptime_s": 22.2,
+   "audio_seconds": 22.1,
+   "realtime_factor": 0.337,
+   "stages": [
+    {
+     "stage": "vad",
+     "count": 692,
+     "mean_ms": 1.3,
+     "p50_ms": 1.1,
+     "p95_ms": 2.7,
+     "min_ms": 0.5,
+     "max_ms": 5.6
+    },
+    {
+     "stage": "asr",
+     "count": 3,
+     "mean_ms": 2485.7,
+     "p50_ms": 2507.1,
+     "p95_ms": 2718.5,
+     "min_ms": 2231.5,
+     "max_ms": 2718.5
+    },
+    {
+     "stage": "translate",
+     "count": 3,
+     "mean_ms": 2844.9,
+     "p50_ms": 2804.0,
+     "p95_ms": 4473.0,
+     "min_ms": 1257.8,
+     "max_ms": 4473.0
+    }
+   ]
+  },
+  {
+   "kind": "partial",
+   "t": 33.515,
+   "text": "...",
+   "index": 3
+  },
+  {
+   "kind": "gloss",
+   "t": 33.515,
+   "term": "eigenvalue",
+   "explanation": "A scalar showing how much a matrix stretches a special direction (its eigenvector).",
+   "language": "hi",
+   "source_line": "These two ideas sit at the center of linear algebra, so it is worth going slowly.",
+   "latency_ms": 0.3,
+   "backend": "heuristic"
+  },
+  {
+   "kind": "gloss",
+   "t": 33.515,
+   "term": "eigenvector",
+   "explanation": "A direction that a matrix only stretches or shrinks, without rotating it.",
+   "language": "hi",
+   "source_line": "These two ideas sit at the center of linear algebra, so it is worth going slowly.",
+   "latency_ms": 0.3,
+   "backend": "heuristic"
+  },
+  {
+   "kind": "caption",
+   "t": 35.855,
+   "index": 3,
+   "text": "A matrix is a linear transformation.",
+   "language": "en",
+   "start_s": 15.86,
+   "latency_ms": 2341.1,
+   "rtf": 0.684,
+   "provider": "CPUExecutionProvider"
+  },
+  {
+   "kind": "translation",
+   "t": 37.832,
+   "index": 3,
+   "text": "एक मैट्रिक्स एक रैखिक परिवर्तन है।",
+   "target_language": "hi",
+   "latency_ms": 1977.2,
+   "passthrough": false,
+   "protected_terms": []
+  },
+  {
+   "kind": "metric",
+   "t": 37.832,
+   "uptime_s": 26.5,
+   "audio_seconds": 26.5,
+   "realtime_factor": 0.37,
+   "stages": [
+    {
+     "stage": "vad",
+     "count": 827,
+     "mean_ms": 1.3,
+     "p50_ms": 1.1,
+     "p95_ms": 2.9,
+     "min_ms": 0.6,
+     "max_ms": 5.6
+    },
+    {
+     "stage": "asr",
+     "count": 4,
+     "mean_ms": 2449.6,
+     "p50_ms": 2507.1,
+     "p95_ms": 2718.5,
+     "min_ms": 2231.5,
+     "max_ms": 2718.5
+    },
+    {
+     "stage": "translate",
+     "count": 4,
+     "mean_ms": 2628.0,
+     "p50_ms": 2804.0,
+     "p95_ms": 4473.0,
+     "min_ms": 1257.8,
+     "max_ms": 4473.0
+    }
+   ]
+  },
+  {
+   "kind": "partial",
+   "t": 37.832,
+   "text": "...",
+   "index": 4
+  },
+  {
+   "kind": "caption",
+   "t": 40.485,
+   "index": 4,
+   "text": "It stretches, rotates and shears space.",
+   "language": "en",
+   "start_s": 19.58,
+   "latency_ms": 2652.6,
+   "rtf": 0.648,
+   "provider": "CPUExecutionProvider"
+  },
+  {
+   "kind": "translation",
+   "t": 43.212,
+   "index": 4,
+   "text": "यह खिंचाव, घूमता है और अंतरिक्ष को काटता है।",
+   "target_language": "hi",
+   "latency_ms": 2726.1,
+   "passthrough": false,
+   "protected_terms": []
+  },
+  {
+   "kind": "metric",
+   "t": 43.213,
+   "uptime_s": 31.9,
+   "audio_seconds": 31.8,
+   "realtime_factor": 0.391,
+   "stages": [
+    {
+     "stage": "vad",
+     "count": 995,
+     "mean_ms": 1.4,
+     "p50_ms": 1.2,
+     "p95_ms": 3.3,
+     "min_ms": 0.7,
+     "max_ms": 5.6
+    },
+    {
+     "stage": "asr",
+     "count": 5,
+     "mean_ms": 2490.2,
+     "p50_ms": 2507.1,
+     "p95_ms": 2718.5,
+     "min_ms": 2231.5,
+     "max_ms": 2718.5
+    },
+    {
+     "stage": "translate",
+     "count": 5,
+     "mean_ms": 2647.7,
+     "p50_ms": 2726.3,
+     "p95_ms": 4473.0,
+     "min_ms": 1257.8,
+     "max_ms": 4473.0
+    }
+   ]
+  },
+  {
+   "kind": "partial",
+   "t": 43.213,
+   "text": "...",
+   "index": 5
+  },
+  {
+   "kind": "caption",
+   "t": 45.913,
+   "index": 5,
+   "text": "For most vectors, applying the matrix changes both direction and length.",
+   "language": "en",
+   "start_s": 24.76,
+   "latency_ms": 2701.8,
+   "rtf": 0.454,
+   "provider": "CPUExecutionProvider"
+  },
+  {
+   "kind": "translation",
+   "t": 49.794,
+   "index": 5,
+   "text": "अधिकांश वेक्टरों के लिए, मैट्रिक्स को लागू करने से दिशा और लंबाई दोनों बदल जाती है।",
+   "target_language": "hi",
+   "latency_ms": 3880.0,
+   "passthrough": false,
+   "protected_terms": []
+  },
+  {
+   "kind": "metric",
+   "t": 49.794,
+   "uptime_s": 38.5,
+   "audio_seconds": 38.4,
+   "realtime_factor": 0.394,
+   "stages": [
+    {
+     "stage": "vad",
+     "count": 1201,
+     "mean_ms": 1.4,
+     "p50_ms": 1.2,
+     "p95_ms": 3.5,
+     "min_ms": 0.5,
+     "max_ms": 5.7
+    },
+    {
+     "stage": "asr",
+     "count": 6,
+     "mean_ms": 2525.5,
+     "p50_ms": 2652.8,
+     "p95_ms": 2718.5,
+     "min_ms": 2231.5,
+     "max_ms": 2718.5
+    },
+    {
+     "stage": "translate",
+     "count": 6,
+     "mean_ms": 2853.1,
+     "p50_ms": 2804.0,
+     "p95_ms": 4473.0,
+     "min_ms": 1257.8,
+     "max_ms": 4473.0
+    }
+   ]
+  },
+  {
+   "kind": "partial",
+   "t": 49.794,
+   "text": "...",
+   "index": 6
+  },
+  {
+   "kind": "caption",
+   "t": 52.522,
+   "index": 6,
+   "text": "But a few special vectors only change length.",
+   "language": "en",
+   "start_s": 31.86,
+   "latency_ms": 2726.9,
+   "rtf": 0.722,
+   "provider": "CPUExecutionProvider"
+  },
+  {
+   "kind": "translation",
+   "t": 54.419,
+   "index": 6,
+   "text": "लेकिन कुछ विशेष वेक्टर केवल लंबाई बदलते हैं।",
+   "target_language": "hi",
+   "latency_ms": 1895.7,
+   "passthrough": false,
+   "protected_terms": []
+  },
+  {
+   "kind": "metric",
+   "t": 54.419,
+   "uptime_s": 43.1,
+   "audio_seconds": 43.1,
+   "realtime_factor": 0.415,
+   "stages": [
+    {
+     "stage": "vad",
+     "count": 1346,
+     "mean_ms": 1.4,
+     "p50_ms": 1.2,
+     "p95_ms": 3.5,
+     "min_ms": 0.5,
+     "max_ms": 5.7
+    },
+    {
+     "stage": "asr",
+     "count": 7,
+     "mean_ms": 2554.3,
+     "p50_ms": 2652.8,
+     "p95_ms": 2727.1,
+     "min_ms": 2231.5,
+     "max_ms": 2727.1
+    },
+    {
+     "stage": "translate",
+     "count": 7,
+     "mean_ms": 2716.4,
+     "p50_ms": 2726.3,
+     "p95_ms": 4473.0,
+     "min_ms": 1257.8,
+     "max_ms": 4473.0
+    }
+   ]
+  },
+  {
+   "kind": "partial",
+   "t": 54.419,
+   "text": "...",
+   "index": 7
+  },
+  {
+   "kind": "caption",
+   "t": 56.697,
+   "index": 7,
+   "text": "Their direction is preserved.",
+   "language": "en",
+   "start_s": 35.99,
+   "latency_ms": 2277.9,
+   "rtf": 0.89,
+   "provider": "CPUExecutionProvider"
+  },
+  {
+   "kind": "translation",
+   "t": 57.757,
+   "index": 7,
+   "text": "उनका मार्गदर्शन संरक्षित है।",
+   "target_language": "hi",
+   "latency_ms": 1060.6,
+   "passthrough": false,
+   "protected_terms": []
+  },
+  {
+   "kind": "metric",
+   "t": 57.757,
+   "uptime_s": 46.4,
+   "audio_seconds": 46.4,
+   "realtime_factor": 0.434,
+   "stages": [
+    {
+     "stage": "vad",
+     "count": 1450,
+     "mean_ms": 1.4,
+     "p50_ms": 1.2,
+     "p95_ms": 3.5,
+     "min_ms": 0.5,
+     "max_ms": 9.3
+    },
+    {
+     "stage": "asr",
+     "count": 8,
+     "mean_ms": 2519.8,
+     "p50_ms": 2652.8,
+     "p95_ms": 2727.1,
+     "min_ms": 2231.5,
+     "max_ms": 2727.1
+    },
+    {
+     "stage": "translate",
+     "count": 8,
+     "mean_ms": 2509.4,
+     "p50_ms": 2726.3,
+     "p95_ms": 4473.0,
+     "min_ms": 1060.7,
+     "max_ms": 4473.0
+    }
+   ]
+  },
+  {
+   "kind": "partial",
+   "t": 57.757,
+   "text": "...",
+   "index": 8
+  },
+  {
+   "kind": "caption",
+   "t": 60.61,
+   "index": 8,
+   "text": "Those vectors are the eigenvectors, and the factor they stretch by is the eigenvalue.",
+   "language": "en",
+   "start_s": 39.61,
+   "latency_ms": 2852.7,
+   "rtf": 0.423,
+   "provider": "CPUExecutionProvider"
+  },
+  {
+   "kind": "translation",
+   "t": 64.059,
+   "index": 8,
+   "text": "वेक्टर eigenvectors हैं, और कारक वे द्वारा फैलाव eigenvalue है.",
+   "target_language": "hi",
+   "latency_ms": 3448.9,
+   "passthrough": false,
+   "protected_terms": [
+    "eigenvectors",
+    "eigenvalue"
+   ]
+  },
+  {
+   "kind": "metric",
+   "t": 64.059,
+   "uptime_s": 52.7,
+   "audio_seconds": 52.7,
+   "realtime_factor": 0.437,
+   "stages": [
+    {
+     "stage": "vad",
+     "count": 1647,
+     "mean_ms": 1.4,
+     "p50_ms": 1.2,
+     "p95_ms": 3.2,
+     "min_ms": 0.5,
+     "max_ms": 9.3
+    },
+    {
+     "stage": "asr",
+     "count": 9,
+     "mean_ms": 2556.8,
+     "p50_ms": 2652.8,
+     "p95_ms": 2853.0,
+     "min_ms": 2231.5,
+     "max_ms": 2853.0
+    },
+    {
+     "stage": "translate",
+     "count": 9,
+     "mean_ms": 2613.8,
+     "p50_ms": 2726.3,
+     "p95_ms": 4473.0,
+     "min_ms": 1060.7,
+     "max_ms": 4473.0
+    }
+   ]
+  },
+  {
+   "kind": "partial",
+   "t": 64.059,
+   "text": "...",
+   "index": 9
+  },
+  {
+   "kind": "caption",
+   "t": 66.65,
+   "index": 9,
+   "text": "To find them we solve the characteristic equation of the matrix.",
+   "language": "en",
+   "start_s": 47.35,
+   "latency_ms": 2589.5,
+   "rtf": 0.525,
+   "provider": "CPUExecutionProvider"
+  },
+  {
+   "kind": "translation",
+   "t": 69.592,
+   "index": 9,
+   "text": "उन्हें खोजने के लिए हम मैट्रिक्स के विशिष्ट समीकरण को हल करते हैं।",
+   "target_language": "hi",
+   "latency_ms": 2941.8,
+   "passthrough": false,
+   "protected_terms": []
+  },
+  {
+   "kind": "metric",
+   "t": 69.592,
+   "uptime_s": 58.3,
+   "audio_seconds": 58.2,
+   "realtime_factor": 0.44,
+   "stages": [
+    {
+     "stage": "vad",
+     "count": 1820,
+     "mean_ms": 1.4,
+     "p50_ms": 1.1,
+     "p95_ms": 3.0,
+     "min_ms": 0.4,
+     "max_ms": 9.3
+    },
+    {
+     "stage": "asr",
+     "count": 10,
+     "mean_ms": 2560.1,
+     "p50_ms": 2652.8,
+     "p95_ms": 2853.0,
+     "min_ms": 2231.5,
+     "max_ms": 2853.0
+    },
+    {
+     "stage": "translate",
+     "count": 10,
+     "mean_ms": 2646.6,
+     "p50_ms": 2804.0,
+     "p95_ms": 4473.0,
+     "min_ms": 1060.7,
+     "max_ms": 4473.0
+    }
+   ]
+  },
+  {
+   "kind": "partial",
+   "t": 70.198,
+   "text": "...",
+   "index": 10
+  },
+  {
+   "kind": "caption",
+   "t": 72.709,
+   "index": 10,
+   "text": "The determinant of a minus lambda times the identity must equal zero.",
+   "language": "en",
+   "start_s": 53.27,
+   "latency_ms": 2510.9,
+   "rtf": 0.454,
+   "provider": "CPUExecutionProvider"
+  },
+  {
+   "kind": "translation",
+   "t": 75.463,
+   "index": 10,
+   "text": "एक शून्य lambda के determinant पहचान 0 के बराबर होना चाहिए।",
+   "target_language": "hi",
+   "latency_ms": 2753.5,
+   "passthrough": false,
+   "protected_terms": [
+    "determinant"
+   ]
+  },
+  {
+   "kind": "metric",
+   "t": 75.463,
+   "uptime_s": 64.1,
+   "audio_seconds": 64.1,
+   "realtime_factor": 0.439,
+   "stages": [
+    {
+     "stage": "vad",
+     "count": 2003,
+     "mean_ms": 1.3,
+     "p50_ms": 1.1,
+     "p95_ms": 3.0,
+     "min_ms": 0.4,
+     "max_ms": 5.3
+    },
+    {
+     "stage": "asr",
+     "count": 11,
+     "mean_ms": 2555.7,
+     "p50_ms": 2589.8,
+     "p95_ms": 2853.0,
+     "min_ms": 2231.5,
+     "max_ms": 2853.0
+    },
+    {
+     "stage": "translate",
+     "count": 11,
+     "mean_ms": 2656.3,
+     "p50_ms": 2753.6,
+     "p95_ms": 4473.0,
+     "min_ms": 1060.7,
+     "max_ms": 4473.0
+    }
+   ]
+  },
+  {
+   "kind": "partial",
+   "t": 77.37,
+   "text": "...",
+   "index": 11
+  },
+  {
+   "kind": "caption",
+   "t": 79.942,
+   "index": 11,
+   "text": "The determinant is a single number that tells you whether the matrix squashes space flat.",
+   "language": "en",
+   "start_s": 59.8,
+   "latency_ms": 2572.2,
+   "rtf": 0.416,
+   "provider": "CPUExecutionProvider"
+  },
+  {
+   "kind": "translation",
+   "t": 84.233,
+   "index": 11,
+   "text": "determinant एक एकल संख्या है जो आपको बताता है कि मैट्रिक्स अंतरिक्ष सपाट squashes है।",
+   "target_language": "hi",
+   "latency_ms": 4290.2,
+   "passthrough": false,
+   "protected_terms": [
+    "determinant"
+   ]
+  },
+  {
+   "kind": "metric",
+   "t": 84.233,
+   "uptime_s": 72.9,
+   "audio_seconds": 72.9,
+   "realtime_factor": 0.421,
+   "stages": [
+    {
+     "stage": "vad",
+     "count": 2277,
+     "mean_ms": 1.3,
+     "p50_ms": 1.1,
+     "p95_ms": 3.3,
+     "min_ms": 0.4,
+     "max_ms": 5.6
+    },
+    {
+     "stage": "asr",
+     "count": 12,
+     "mean_ms": 2557.1,
+     "p50_ms": 2589.8,
+     "p95_ms": 2853.0,
+     "min_ms": 2231.5,
+     "max_ms": 2853.0
+    },
+    {
+     "stage": "translate",
+     "count": 12,
+     "mean_ms": 2792.5,
+     "p50_ms": 2804.0,
+     "p95_ms": 4473.0,
+     "min_ms": 1060.7,
+     "max_ms": 4473.0
+    }
+   ]
+  },
+  {
+   "kind": "gloss",
+   "t": 84.233,
+   "term": "determinant",
+   "explanation": "A single number from a square matrix; zero means the matrix squashes space flat.",
+   "language": "hi",
+   "source_line": "The determinant is a single number that tells you whether the matrix squashes space flat.",
+   "latency_ms": 0.1,
+   "backend": "heuristic"
+  },
+  {
+   "kind": "partial",
+   "t": 85.599,
+   "text": "...",
+   "index": 12
+  },
+  {
+   "kind": "caption",
+   "t": 88.408,
+   "index": 12,
+   "text": "If it is zero, there is a non-trivial solution, and that is exactly what we want.",
+   "language": "en",
+   "start_s": 67.03,
+   "latency_ms": 2808.9,
+   "rtf": 0.392,
+   "provider": "CPUExecutionProvider"
+  },
+  {
+   "kind": "translation",
+   "t": 92.029,
+   "index": 12,
+   "text": "यदि यह शून्य है, तो एक गैर-नाजुक समाधान है, और यही हम चाहते हैं।",
+   "target_language": "hi",
+   "latency_ms": 3620.5,
+   "passthrough": false,
+   "protected_terms": []
+  },
+  {
+   "kind": "metric",
+   "t": 92.029,
+   "uptime_s": 80.7,
+   "audio_seconds": 80.6,
+   "realtime_factor": 0.415,
+   "stages": [
+    {
+     "stage": "vad",
+     "count": 2520,
+     "mean_ms": 1.3,
+     "p50_ms": 1.1,
+     "p95_ms": 2.8,
+     "min_ms": 0.3,
+     "max_ms": 5.6
+    },
+    {
+     "stage": "asr",
+     "count": 13,
+     "mean_ms": 2576.5,
+     "p50_ms": 2589.8,
+     "p95_ms": 2853.0,
+     "min_ms": 2231.5,
+     "max_ms": 2853.0
+    },
+    {
+     "stage": "translate",
+     "count": 13,
+     "mean_ms": 2856.2,
+     "p50_ms": 2804.0,
+     "p95_ms": 4473.0,
+     "min_ms": 1060.7,
+     "max_ms": 4473.0
+    }
+   ]
+  },
+  {
+   "kind": "partial",
+   "t": 92.029,
+   "text": "...",
+   "index": 13
+  },
+  {
+   "kind": "caption",
+   "t": 94.537,
+   "index": 13,
+   "text": "Symmetric matrices always have real eigenvalues.",
+   "language": "en",
+   "start_s": 75.32,
+   "latency_ms": 2507.6,
+   "rtf": 0.572,
+   "provider": "CPUExecutionProvider"
+  },
+  {
+   "kind": "translation",
+   "t": 96.686,
+   "index": 13,
+   "text": "सममित मैट्रिक्स हमेशा असली eigenvalues है।",
+   "target_language": "hi",
+   "latency_ms": 2149.6,
+   "passthrough": false,
+   "protected_terms": [
+    "eigenvalues"
+   ]
+  },
+  {
+   "kind": "metric",
+   "t": 96.687,
+   "uptime_s": 85.4,
+   "audio_seconds": 85.3,
+   "realtime_factor": 0.422,
+   "stages": [
+    {
+     "stage": "vad",
+     "count": 2666,
+     "mean_ms": 1.4,
+     "p50_ms": 1.1,
+     "p95_ms": 3.6,
+     "min_ms": 0.3,
+     "max_ms": 20.4
+    },
+    {
+     "stage": "asr",
+     "count": 14,
+     "mean_ms": 2571.5,
+     "p50_ms": 2589.8,
+     "p95_ms": 2853.0,
+     "min_ms": 2231.5,
+     "max_ms": 2853.0
+    },
+    {
+     "stage": "translate",
+     "count": 14,
+     "mean_ms": 2805.8,
+     "p50_ms": 2804.0,
+     "p95_ms": 4473.0,
+     "min_ms": 1060.7,
+     "max_ms": 4473.0
+    }
+   ]
+  },
+  {
+   "kind": "partial",
+   "t": 96.687,
+   "text": "...",
+   "index": 14
+  },
+  {
+   "kind": "caption",
+   "t": 99.156,
+   "index": 14,
+   "text": "That is a useful guarantee.",
+   "language": "en",
+   "start_s": 79.93,
+   "latency_ms": 2469.5,
+   "rtf": 0.93,
+   "provider": "CPUExecutionProvider"
+  },
+  {
+   "kind": "translation",
+   "t": 100.141,
+   "index": 14,
+   "text": "यह एक उपयोगी गारंटी है।",
+   "target_language": "hi",
+   "latency_ms": 984.4,
+   "passthrough": false,
+   "protected_terms": []
+  },
+  {
+   "kind": "metric",
+   "t": 100.141,
+   "uptime_s": 88.8,
+   "audio_seconds": 88.8,
+   "realtime_factor": 0.433,
+   "stages": [
+    {
+     "stage": "vad",
+     "count": 2774,
+     "mean_ms": 1.4,
+     "p50_ms": 1.1,
+     "p95_ms": 3.0,
+     "min_ms": 0.3,
+     "max_ms": 20.4
+    },
+    {
+     "stage": "asr",
+     "count": 15,
+     "mean_ms": 2564.8,
+     "p50_ms": 2572.4,
+     "p95_ms": 2853.0,
+     "min_ms": 2231.5,
+     "max_ms": 2853.0
+    },
+    {
+     "stage": "translate",
+     "count": 15,
+     "mean_ms": 2684.3,
+     "p50_ms": 2753.6,
+     "p95_ms": 4473.0,
+     "min_ms": 984.6,
+     "max_ms": 4473.0
+    }
+   ]
+  },
+  {
+   "kind": "partial",
+   "t": 101.115,
+   "text": "...",
+   "index": 15
+  },
+  {
+   "kind": "caption",
+   "t": 103.784,
+   "index": 15,
+   "text": "Once we have a full set of eigenvectors, we can diagonalize the matrix.",
+   "language": "en",
+   "start_s": 83.61,
+   "latency_ms": 2667.9,
+   "rtf": 0.437,
+   "provider": "CPUExecutionProvider"
+  },
+  {
+   "kind": "translation",
+   "t": 108.008,
+   "index": 15,
+   "text": "एक बार जब हम eigenvectors का पूरा सेट है, हम diagonalize कर सकते हैं मैट्रिक्स.",
+   "target_language": "hi",
+   "latency_ms": 4224.1,
+   "passthrough": false,
+   "protected_terms": [
+    "eigenvectors",
+    "diagonalize"
+   ]
+  },
+  {
+   "kind": "metric",
+   "t": 108.008,
+   "uptime_s": 96.7,
+   "audio_seconds": 96.6,
+   "realtime_factor": 0.426,
+   "stages": [
+    {
+     "stage": "vad",
+     "count": 3020,
+     "mean_ms": 1.4,
+     "p50_ms": 1.1,
+     "p95_ms": 3.5,
+     "min_ms": 0.5,
+     "max_ms": 20.4
+    },
+    {
+     "stage": "asr",
+     "count": 16,
+     "mean_ms": 2571.2,
+     "p50_ms": 2589.8,
+     "p95_ms": 2853.0,
+     "min_ms": 2231.5,
+     "max_ms": 2853.0
+    },
+    {
+     "stage": "translate",
+     "count": 16,
+     "mean_ms": 2780.6,
+     "p50_ms": 2804.0,
+     "p95_ms": 4473.0,
+     "min_ms": 984.6,
+     "max_ms": 4473.0
+    }
+   ]
+  },
+  {
+   "kind": "partial",
+   "t": 108.008,
+   "text": "...",
+   "index": 16
+  },
+  {
+   "kind": "caption",
+   "t": 110.671,
+   "index": 16,
+   "text": "Diagonalization turns a hard repeated multiplication into a simple one.",
+   "language": "en",
+   "start_s": 90.71,
+   "latency_ms": 2662.4,
+   "rtf": 0.455,
+   "provider": "CPUExecutionProvider"
+  },
+  {
+   "kind": "translation",
+   "t": 113.818,
+   "index": 16,
+   "text": "डायग्नोलेशन एक कठिन दोहराया गुणन को एक सरल में बदल देता है।",
+   "target_language": "hi",
+   "latency_ms": 3146.2,
+   "passthrough": false,
+   "protected_terms": []
+  },
+  {
+   "kind": "metric",
+   "t": 113.818,
+   "uptime_s": 102.5,
+   "audio_seconds": 102.5,
+   "realtime_factor": 0.427,
+   "stages": [
+    {
+     "stage": "vad",
+     "count": 3202,
+     "mean_ms": 1.3,
+     "p50_ms": 1.1,
+     "p95_ms": 3.3,
+     "min_ms": 0.5,
+     "max_ms": 6.9
+    },
+    {
+     "stage": "asr",
+     "count": 17,
+     "mean_ms": 2576.6,
+     "p50_ms": 2589.8,
+     "p95_ms": 2853.0,
+     "min_ms": 2231.5,
+     "max_ms": 2853.0
+    },
+    {
+     "stage": "translate",
+     "count": 17,
+     "mean_ms": 2802.1,
+     "p50_ms": 2804.0,
+     "p95_ms": 4473.0,
+     "min_ms": 984.6,
+     "max_ms": 4473.0
+    }
+   ]
+  },
+  {
+   "kind": "partial",
+   "t": 114.365,
+   "text": "...",
+   "index": 17
+  },
+  {
+   "kind": "caption",
+   "t": 116.964,
+   "index": 17,
+   "text": "We will use this next week when we look at principal component analysis.",
+   "language": "en",
+   "start_s": 97.62,
+   "latency_ms": 2599.1,
+   "rtf": 0.486,
+   "provider": "CPUExecutionProvider"
+  },
+  {
+   "kind": "translation",
+   "t": 119.404,
+   "index": 17,
+   "text": "हम अगले सप्ताह इसका उपयोग करेंगे जब हम मुख्य घटक विश्लेषण को देखते हैं।",
+   "target_language": "hi",
+   "latency_ms": 2440.7,
+   "passthrough": false,
+   "protected_terms": []
+  },
+  {
+   "kind": "metric",
+   "t": 119.404,
+   "uptime_s": 108.1,
+   "audio_seconds": 105.2,
+   "realtime_factor": 0.441,
+   "stages": [
+    {
+     "stage": "vad",
+     "count": 3288,
+     "mean_ms": 1.3,
+     "p50_ms": 1.1,
+     "p95_ms": 3.2,
+     "min_ms": 0.0,
+     "max_ms": 6.9
+    },
+    {
+     "stage": "asr",
+     "count": 18,
+     "mean_ms": 2577.9,
+     "p50_ms": 2599.3,
+     "p95_ms": 2853.0,
+     "min_ms": 2231.5,
+     "max_ms": 2853.0
+    },
+    {
+     "stage": "translate",
+     "count": 18,
+     "mean_ms": 2782.0,
+     "p50_ms": 2804.0,
+     "p95_ms": 4473.0,
+     "min_ms": 984.6,
+     "max_ms": 4473.0
+    }
+   ]
+  },
+  {
+   "kind": "gloss",
+   "t": 119.406,
+   "term": "diagonalize",
+   "explanation": "Rewriting a matrix in a basis where it becomes a simple diagonal scaling.",
+   "language": "hi",
+   "source_line": "We will use this next week when we look at principal component analysis.",
+   "latency_ms": 0.1,
+   "backend": "heuristic"
+  },
+  {
+   "kind": "status",
+   "t": 121.941,
+   "stage": "summarising",
+   "running": false,
+   "device": {
+    "provider": "CPUExecutionProvider",
+    "provider_label": "CPU",
+    "available_providers": [
+     "AzureExecutionProvider",
+     "CPUExecutionProvider"
+    ],
+    "ort_version": "1.23.2",
+    "machine": "AMD64",
+    "processor": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD",
+    "is_arm64": false,
+    "npu_active": false,
+    "fallback_reason": "QNN not installed; Dml not installed",
+    "qnn_hardware": null
+   },
+   "captions": 18,
+   "glossary": 4,
+   "target_language": "hi",
+   "mock": false,
+   "metrics": {
+    "uptime_s": 110.6,
+    "audio_seconds": 105.2,
+    "realtime_factor": 0.441,
+    "stages": [
+     {
+      "stage": "vad",
+      "count": 3288,
+      "mean_ms": 1.3,
+      "p50_ms": 1.1,
+      "p95_ms": 3.2,
+      "min_ms": 0.0,
+      "max_ms": 6.9
+     },
+     {
+      "stage": "asr",
+      "count": 18,
+      "mean_ms": 2577.9,
+      "p50_ms": 2599.3,
+      "p95_ms": 2853.0,
+      "min_ms": 2231.5,
+      "max_ms": 2853.0
+     },
+     {
+      "stage": "translate",
+      "count": 18,
+      "mean_ms": 2782.0,
+      "p50_ms": 2804.0,
+      "p95_ms": 4473.0,
+      "min_ms": 984.6,
+      "max_ms": 4473.0
+     }
+    ]
+   }
+  },
+  {
+   "kind": "notes",
+   "t": 121.944,
+   "title": "Good morning everyone. - 2026-09-20 15:08",
+   "path": "sessions/20260920-1508-good-morning-everyone-2026-09-20-15-08.md",
+   "markdown": "# Good morning everyone. - 2026-09-20 15:08\n\n**Date** 20 Sep 2026, 15:08 · **Duration** 2 min · **Captions** 18\n\n_Processed entirely on-device: CPU_\n\n## Topics\n\n- eigenvalue\n- eigenvector\n- determinant\n- diagonalize\n\n## Key points\n\n- These two ideas sit at the center of linear algebra, so it is worth going slowly.\n- For most vectors, applying the matrix changes both direction and length.\n- Those vectors are the eigenvectors, and the factor they stretch by is the eigenvalue.\n- The determinant is a single number that tells you whether the matrix squashes space flat.\n- If it is zero, there is a non-trivial solution, and that is exactly what we want.\n- We will use this next week when we look at principal component analysis.\n\n## Follow up\n\nNone mentioned.\n\n_Generated without an LLM - install the model for better notes._\n\n## Glossary\n\n_Explanations in हिन्दी (Hindi)._\n\n- **eigenvalue** — A scalar showing how much a matrix stretches a special direction (its eigenvector).\n- **eigenvector** — A direction that a matrix only stretches or shrinks, without rotating it.\n- **determinant** — A single number from a square matrix; zero means the matrix squashes space flat.\n- **diagonalize** — Rewriting a matrix in a basis where it becomes a simple diagonal scaling.\n\n## Transcript\n\n**[00:00]** Good morning everyone.\n> सभी को शुभ दोपहर।\n\n**[00:02]** Today we will start with eigenvalues and eigenvectors.\n> आज हम eigenvalues और eigenvectors के साथ शुरू करेंगे।\n\n**[00:08]** These two ideas sit at the center of linear algebra, so it is worth going slowly.\n> ये दो विचार रैखिक बीजगणित के केंद्र में हैं, इसलिए यह धीमी गति से आगे बढ़ना लायक है।\n\n**[00:15]** A matrix is a linear transformation.\n> एक मैट्रिक्स एक रैखिक परिवर्तन है।\n\n**[00:19]** It stretches, rotates and shears space.\n> यह खिंचाव, घूमता है और अंतरिक्ष को काटता है।\n\n**[00:24]** For most vectors, applying the matrix changes both direction and length.\n> अधिकांश वेक्टरों के लिए, मैट्रिक्स को लागू करने से दिशा और लंबाई दोनों बदल जाती है।\n\n**[00:31]** But a few special vectors only change length.\n> लेकिन कुछ विशेष वेक्टर केवल लंबाई बदलते हैं।\n\n**[00:35]** Their direction is preserved.\n> उनका मार्गदर्शन संरक्षित है।\n\n**[00:39]** Those vectors are the eigenvectors, and the factor they stretch by is the eigenvalue.\n> वेक्टर eigenvectors हैं, और कारक वे द्वारा फैलाव eigenvalue है.\n\n**[00:47]** To find them we solve the characteristic equation of the matrix.\n> उन्हें खोजने के लिए हम मैट्रिक्स के विशिष्ट समीकरण को हल करते हैं।\n\n**[00:53]** The determinant of a minus lambda times the identity must equal zero.\n> एक शून्य lambda के determinant पहचान 0 के बराबर होना चाहिए।\n\n**[00:59]** The determinant is a single number that tells you whether the matrix squashes space flat.\n> determinant एक एकल संख्या है जो आपको बताता है कि मैट्रिक्स अंतरिक्ष सपाट squashes है।\n\n**[01:07]** If it is zero, there is a non-trivial solution, and that is exactly what we want.\n> यदि यह शून्य है, तो एक गैर-नाजुक समाधान है, और यही हम चाहते हैं।\n\n**[01:15]** Symmetric matrices always have real eigenvalues.\n> सममित मैट्रिक्स हमेशा असली eigenvalues है।\n\n**[01:19]** That is a useful guarantee.\n> यह एक उपयोगी गारंटी है।\n\n**[01:23]** Once we have a full set of eigenvectors, we can diagonalize the matrix.\n> एक बार जब हम eigenvectors का पूरा सेट है, हम diagonalize कर सकते हैं मैट्रिक्स.\n\n**[01:30]** Diagonalization turns a hard repeated multiplication into a simple one.\n> डायग्नोलेशन एक कठिन दोहराया गुणन को एक सरल में बदल देता है।\n\n**[01:37]** We will use this next week when we look at principal component analysis.\n> हम अगले सप्ताह इसका उपयोग करेंगे जब हम मुख्य घटक विश्लेषण को देखते हैं।\n\n## Performance\n\n```json\n{\n  \"uptime_s\": 110.6,\n  \"audio_seconds\": 105.2,\n  \"realtime_factor\": 0.441,\n  \"stages\": [\n    {\n      \"stage\": \"vad\",\n      \"count\": 3288,\n      \"mean_ms\": 1.3,\n      \"p50_ms\": 1.1,\n      \"p95_ms\": 3.2,\n      \"min_ms\": 0.0,\n      \"max_ms\": 6.9\n    },\n    {\n      \"stage\": \"asr\",\n      \"count\": 18,\n      \"mean_ms\": 2577.9,\n      \"p50_ms\": 2599.3,\n      \"p95_ms\": 2853.0,\n      \"min_ms\": 2231.5,\n      \"max_ms\": 2853.0\n    },\n    {\n      \"stage\": \"translate\",\n      \"count\": 18,\n      \"mean_ms\": 2782.0,\n      \"p50_ms\": 2804.0,\n      \"p95_ms\": 4473.0,\n      \"min_ms\": 984.6,\n      \"max_ms\": 4473.0\n    }\n  ]\n}\n```\n",
+   "summary": "## Topics\n\n- eigenvalue\n- eigenvector\n- determinant\n- diagonalize\n\n## Key points\n\n- These two ideas sit at the center of linear algebra, so it is worth going slowly.\n- For most vectors, applying the matrix changes both direction and length.\n- Those vectors are the eigenvectors, and the factor they stretch by is the eigenvalue.\n- The determinant is a single number that tells you whether the matrix squashes space flat.\n- If it is zero, there is a non-trivial solution, and that is exactly what we want.\n- We will use this next week when we look at principal component analysis.\n\n## Follow up\n\nNone mentioned.\n\n_Generated without an LLM - install the model for better notes._",
+   "quiz": [],
+   "glossary": [
+    {
+     "term": "eigenvalue",
+     "explanation": "A scalar showing how much a matrix stretches a special direction (its eigenvector).",
+     "language": "hi",
+     "source_line": "These two ideas sit at the center of linear algebra, so it is worth going slowly.",
+     "latency_ms": 0.3,
+     "backend": "heuristic"
+    },
+    {
+     "term": "eigenvector",
+     "explanation": "A direction that a matrix only stretches or shrinks, without rotating it.",
+     "language": "hi",
+     "source_line": "These two ideas sit at the center of linear algebra, so it is worth going slowly.",
+     "latency_ms": 0.3,
+     "backend": "heuristic"
+    },
+    {
+     "term": "determinant",
+     "explanation": "A single number from a square matrix; zero means the matrix squashes space flat.",
+     "language": "hi",
+     "source_line": "The determinant is a single number that tells you whether the matrix squashes space flat.",
+     "latency_ms": 0.1,
+     "backend": "heuristic"
+    },
+    {
+     "term": "diagonalize",
+     "explanation": "Rewriting a matrix in a basis where it becomes a simple diagonal scaling.",
+     "language": "hi",
+     "source_line": "We will use this next week when we look at principal component analysis.",
+     "latency_ms": 0.1,
+     "backend": "heuristic"
+    }
+   ],
+   "duration_minutes": 1.8
+  },
+  {
+   "kind": "status",
+   "t": 121.944,
+   "running": false,
+   "device": {
+    "provider": "CPUExecutionProvider",
+    "provider_label": "CPU",
+    "available_providers": [
+     "AzureExecutionProvider",
+     "CPUExecutionProvider"
+    ],
+    "ort_version": "1.23.2",
+    "machine": "AMD64",
+    "processor": "AMD64 Family 25 Model 68 Stepping 1, AuthenticAMD",
+    "is_arm64": false,
+    "npu_active": false,
+    "fallback_reason": "QNN not installed; Dml not installed",
+    "qnn_hardware": null
+   },
+   "captions": 18,
+   "glossary": 4,
+   "target_language": "hi",
+   "mock": false,
+   "metrics": {
+    "uptime_s": 110.6,
+    "audio_seconds": 105.2,
+    "realtime_factor": 0.441,
+    "stages": [
+     {
+      "stage": "vad",
+      "count": 3288,
+      "mean_ms": 1.3,
+      "p50_ms": 1.1,
+      "p95_ms": 3.2,
+      "min_ms": 0.0,
+      "max_ms": 6.9
+     },
+     {
+      "stage": "asr",
+      "count": 18,
+      "mean_ms": 2577.9,
+      "p50_ms": 2599.3,
+      "p95_ms": 2853.0,
+      "min_ms": 2231.5,
+      "max_ms": 2853.0
+     },
+     {
+      "stage": "translate",
+      "count": 18,
+      "mean_ms": 2782.0,
+      "p50_ms": 2804.0,
+      "p95_ms": 4473.0,
+      "min_ms": 984.6,
+      "max_ms": 4473.0
+     }
+    ]
+   }
+  }
+ ]
+}

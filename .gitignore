@@ -22,3 +22,7 @@ bench_results/*.json
 
 # Generated test audio (SAPI); regenerate with scripts/accuracy.py
 testaudio/
+
+# Vercel CLI link state and the OIDC token it writes - per-machine, secret
+.vercel/
+.env*

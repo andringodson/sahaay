@@ -4,6 +4,12 @@
 
 Submitted to the Snapdragon® AI Lab Build & Present Challenge 2026.
 
+**[sahaay.vercel.app](https://sahaay.vercel.app)** — the measured results, and
+the real interface [replaying a real session](https://sahaay.vercel.app/demo/?play=1).
+The application itself is not hosted there and cannot be: there is no NPU in a
+datacenter and no audio to capture, and the whole claim is that none of this
+leaves your machine. [Why, in full](docs/WEB.md).
+
 ---
 
 ## The problem
@@ -74,7 +80,8 @@ Then play any lecture and press **Start**.
 ## Something not working? Ask it
 
 ```powershell
-.un.bat --selftest
+.
+un.bat --selftest
 ```
 
 ```
@@ -283,7 +290,7 @@ $ pytest tests/test_offline.py
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File install.ps1 -Dev
-.\.venv\Scripts\python.exe -m pytest        # 199 tests, no weights required
+.\.venv\Scripts\python.exe -m pytest        # 257 tests, no weights required
 ```
 
 ```
@@ -300,6 +307,9 @@ sahaay/
   pipeline.py    the three-thread orchestrator
   server.py      FastAPI + WebSocket
   ui/            no framework, no build step
+scripts/         benchmarks, profiling, accuracy, soak, and the site build
+web/             the public site — generated from ui/ by scripts/build_web.py
+docs/            every measurement, with its method and its caveats
 ```
 
 ## Licence
