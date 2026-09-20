@@ -12,6 +12,7 @@ working. The screenshots are a by-product; the assertions are the point.
 
     python scripts/shoot_web.py
     python scripts/shoot_web.py --headed      # watch it happen
+    python scripts/shoot_web.py --base https://sahaay-offline.vercel.app
 
 Requires playwright (``pip install playwright && playwright install chromium``).
 """
@@ -58,6 +59,10 @@ def main() -> int:
     ap.add_argument("--headed", action="store_true", help="show the browser")
     ap.add_argument("--lang", default="hi", help="which recording to drive")
     ap.add_argument("--out", type=Path, default=OUT_DIR)
+    ap.add_argument(
+        "--base", metavar="URL",
+        help="check a deployed site instead of the local web/ directory",
+    )
     args = ap.parse_args()
 
     try:
@@ -69,7 +74,12 @@ def main() -> int:
     args.out.mkdir(parents=True, exist_ok=True)
     problems: list[str] = []
 
-    with serve(WEB_DIR) as base, sync_playwright() as pw:
+    # A local copy passing is not the same as the deployment passing - the
+    # headers, the rewrite rules and the CSP only exist on the real host.
+    source = contextlib.nullcontext(args.base.rstrip("/")) if args.base else serve(WEB_DIR)
+
+    with source as base, sync_playwright() as pw:
+        print(f"checking {base}")
         browser = pw.chromium.launch(headless=not args.headed)
         page = browser.new_page(viewport={"width": 1440, "height": 900}, device_scale_factor=2)
 
@@ -82,8 +92,9 @@ def main() -> int:
 
         # -- landing page --------------------------------------------------
         page.goto(f"{base}/", wait_until="networkidle")
-        page.screenshot(path=str(args.out / "site.png"), full_page=True)
-        print(f"wrote {(args.out / 'site.png').relative_to(REPO_ROOT)}")
+        if not args.base:
+            page.screenshot(path=str(args.out / "site.png"), full_page=True)
+            print(f"wrote {(args.out / 'site.png').relative_to(REPO_ROOT)}")
 
         if not page.locator("h1").first.is_visible():
             problems.append("landing page has no visible heading")
@@ -92,8 +103,12 @@ def main() -> int:
         page.goto(f"{base}/demo/?lang={args.lang}&play=1&speed=4", wait_until="networkidle")
 
         try:
+            # Selector waits, not wait_for_function: Playwright evaluates a
+            # string predicate with eval(), and the deployed CSP forbids
+            # unsafe-eval. The check has to work against the real headers or
+            # it is only ever testing the local copy.
             page.wait_for_selector("#captions li", timeout=30_000)
-            page.wait_for_function("document.querySelectorAll('#captions li').length >= 6", timeout=60_000)
+            page.wait_for_selector("#captions li:nth-child(6)", timeout=60_000)
             # The jargon sidebar is half the product's pitch. Waiting for it
             # means the screenshot shows it and a silent glossary fails here.
             page.wait_for_selector("#glossary li", timeout=60_000)
@@ -118,8 +133,9 @@ def main() -> int:
         if notes_visible:
             problems.append("the session-notes sheet is covering the captions")
 
-        page.screenshot(path=str(args.out / "demo.png"))
-        print(f"wrote {(args.out / 'demo.png').relative_to(REPO_ROOT)}")
+        if not args.base:
+            page.screenshot(path=str(args.out / "demo.png"))
+            print(f"wrote {(args.out / 'demo.png').relative_to(REPO_ROOT)}")
 
         print(f"\n  captions   {captions}")
         print(f"  glossary   {glossary}")
@@ -148,8 +164,9 @@ def main() -> int:
                 f"caption area is only {caption_box['height']:.0f}px tall at 390px wide"
             )
 
-        phone.screenshot(path=str(args.out / "demo-mobile.png"))
-        print(f"wrote {(args.out / 'demo-mobile.png').relative_to(REPO_ROOT)}")
+        if not args.base:
+            phone.screenshot(path=str(args.out / "demo-mobile.png"))
+            print(f"wrote {(args.out / 'demo-mobile.png').relative_to(REPO_ROOT)}")
         if caption_box:
             print(f"  caption area at 390px: {caption_box['height']:.0f}px tall")
 
