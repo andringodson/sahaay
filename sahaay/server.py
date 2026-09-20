@@ -33,6 +33,28 @@ log = logging.getLogger(__name__)
 UI_DIR = Path(__file__).parent / "ui"
 
 
+def websocket_library() -> str | None:
+    """Name of the WebSocket implementation uvicorn will use, if any.
+
+    uvicorn serves WebSockets only when `websockets` or `wsproto` is
+    installed. Without one it answers /ws with **404 and keeps serving the
+    page**, so the UI loads perfectly and then never updates - a blank
+    caption pane with no error anywhere. That is the worst possible failure
+    for a live demo, and the test suite cannot catch it: Starlette's
+    TestClient uses an in-process transport and never performs a real
+    handshake, so every WebSocket test passes regardless.
+
+    Hence an explicit check at startup, and a loud message.
+    """
+    for name in ("websockets", "wsproto"):
+        try:
+            __import__(name)
+            return name
+        except ImportError:
+            continue
+    return None
+
+
 def create_app(cfg: Config):
     from fastapi import FastAPI, WebSocket, WebSocketDisconnect
     from fastapi.responses import FileResponse, JSONResponse
@@ -140,6 +162,18 @@ def create_app(cfg: Config):
 
 def serve(cfg: Config) -> None:
     import uvicorn
+
+    ws_library = websocket_library()
+    if ws_library is None:
+        # Refuse rather than serve a UI that can never update. A blank page
+        # with no explanation costs far more than a failed start.
+        raise SystemExit(
+            "\n  No WebSocket library is installed, so live captions cannot be\n"
+            "  delivered and the page would load but never update.\n\n"
+            "    pip install websockets\n\n"
+            "  (or reinstall dependencies: pip install -r requirements.txt)\n"
+        )
+    log.debug("websocket transport: %s", ws_library)
 
     app = create_app(cfg)
     url = f"http://{cfg.server.host}:{cfg.server.port}"

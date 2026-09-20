@@ -45,6 +45,10 @@ On a Snapdragon PC the Whisper encoder runs on the Hexagon NPU instead: [13.5 ms
 
 A one-hour lecture, every day, for every student, is also precisely the workload that is absurd to send to the cloud — and precisely what a 45 TOPS NPU sitting idle in a laptop is for.
 
+![Sahaay running: live code-mixed captions on the left, jargon glossary and live device report on the right](docs/img/ui.png)
+
+*Captions arriving live, the jargon sidebar filling as terms are spoken, and the execution-provider badge reporting what the models are actually running on. Translation shows "not installed" here because this capture ran without the NLLB weights — the UI never claims a capability it does not have.*
+
 ## Try it in 30 seconds
 
 No models, no audio device, no Snapdragon hardware:

@@ -26,3 +26,7 @@ jinja2>=3.1
 
 # CLI / util ---------------------------------------------------------------
 rich>=13.7
+
+# WebSocket transport for uvicorn. Without this the server answers /ws
+# with 404 and the UI loads but never updates - see sahaay/server.py.
+wsproto>=1.2 ; platform_system == "Windows"

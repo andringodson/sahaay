@@ -41,6 +41,14 @@
 
 * { box-sizing: border-box; }
 
+/* The [hidden] attribute only works because the UA stylesheet sets
+   display:none on it, and ANY class rule with a display property beats that
+   on specificity. `.sheet { display: flex }` silently defeated it, so the
+   session-notes panel sat on screen permanently, covering the captions.
+   Caught by actually screenshotting the page rather than testing the DOM.
+   This rule has to come before the components that set display. */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   height: 100%;
