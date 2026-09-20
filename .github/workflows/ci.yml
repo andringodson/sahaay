@@ -33,6 +33,12 @@ jobs:
           # and no audio device, which is what makes it runnable in CI at all.
           pip install numpy pytest tokenizers huggingface-hub
           pip install fastapi uvicorn httpx
+          # websockets is not optional. Without it uvicorn answers /ws with
+          # 404 and the UI loads but never updates, and this CI environment
+          # was missing it - which tests/test_live_server.py caught on its
+          # first run. Keeping it explicit here rather than relying on an
+          # extra so the omission cannot recur silently.
+          pip install websockets
           pip install onnxruntime
 
       - name: Install QNN execution provider (Windows)
