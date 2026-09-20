@@ -108,7 +108,7 @@ works.
 ### 9 — Deployment *(Deployment & Accessibility)*
 - `install.ps1` → `run.bat`. No Node, no build step, no Docker
 - Degrades on every stage rather than failing; `--mock` runs with nothing downloaded
-- 145 tests, CI on Windows and Linux, no weights or audio device needed
+- 199 tests, CI on Windows and Linux, no weights or audio device needed
 - Accessibility: resizable captions, `aria-live`, reduced-motion, full keyboard control
 - Privacy: binds to `127.0.0.1`, no telemetry, no accounts, audio never written to disk
 
