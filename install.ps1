@@ -40,24 +40,64 @@ Say ("-" * 46) "DarkGray"
 # fall back to stock onnxruntime, which works but has no NPU path at all.
 
 if ($Python -eq "") {
-    $candidates = @()
-    foreach ($v in @("3.13", "3.12", "3.11", "3.14")) {
-        $found = & py -$v -c "import sys; print(sys.executable)" 2>$null
-        if ($LASTEXITCODE -eq 0 -and $found) { $candidates += $found }
+    # Ask the launcher once for everything it knows about, rather than
+    # probing versions one at a time. Probing was a real bug: `py -3.13` on a
+    # machine without 3.13 writes its version list to stderr, PowerShell wraps
+    # that in a NativeCommandError, and with ErrorActionPreference = Stop the
+    # installer aborted before doing anything. Anyone whose Python was not
+    # 3.11-3.13 could not install at all.
+    $found = @()
+
+    # Do NOT use 2>&1 here. `py -0p` writes its header to stderr, PowerShell
+    # wraps native stderr in a NativeCommandError, and under
+    # ErrorActionPreference = Stop that throws before $listing is ever
+    # assigned - which silently fell through to whatever `python` happened to
+    # be on PATH. On this machine that meant picking 3.10 over an available
+    # 3.14 and losing the NPU path entirely.
+    $previousEap = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $listing = (& py -0p 2>$null) -join "`n"
+        foreach ($line in $listing -split "`r?`n") {
+            # e.g. " -V:3.12 *        C:\...\python.exe"
+            if ($line -match '(-V:)?(?<ver>3\.\d+)[^\s]*\s+\*?\s*(?<path>[A-Za-z]:\\.*python\.exe)') {
+                $found += [pscustomobject]@{
+                    Version = [version]$Matches['ver']
+                    Path    = $Matches['path'].Trim()
+                }
+            }
+        }
+    } catch {
+        # The launcher is not installed; fall through to `python`.
+    } finally {
+        $ErrorActionPreference = $previousEap
     }
-    if ($candidates.Count -eq 0) {
-        $found = & python -c "import sys; print(sys.executable)" 2>$null
-        if ($LASTEXITCODE -eq 0) { $candidates += $found }
+
+    # onnxruntime-qnn publishes wheels for 3.11+ only, so prefer the newest
+    # interpreter at or above that. Below it there is no NPU path at all.
+    $usable = $found | Where-Object { $_.Version -ge [version]"3.11" } |
+              Sort-Object Version -Descending
+    if ($usable) { $Python = $usable[0].Path }
+
+    if ($Python -eq "") {
+        try {
+            $fallback = (Get-Command python -ErrorAction Stop).Source
+            if ($fallback) { $Python = $fallback }
+        } catch {}
     }
-    if ($candidates.Count -eq 0) {
+
+    if ($Python -eq "") {
         Say "No Python found. Install Python 3.11 or newer from python.org." "Red"
         exit 1
     }
-    $Python = $candidates[0]
 }
 
 $pyVersion = & $Python -c "import sys; print('%d.%d' % sys.version_info[:2])"
 Say "Python        $pyVersion  ($Python)"
+
+if ([version]$pyVersion -lt [version]"3.11") {
+    Say "  Python 3.11+ is needed for onnxruntime-qnn. Continuing on CPU only." "Yellow"
+}
 
 $arch = & $Python -c "import platform; print(platform.machine())"
 $isArm = $arch -match "ARM64|aarch64"
