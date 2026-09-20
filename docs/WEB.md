@@ -97,6 +97,13 @@ the deployment is `sahaay-offline.vercel.app`. Worth knowing before putting a
 URL on a slide — check the alias the deploy actually returns rather than the
 one you expected.
 
+`scripts/shoot_web.py --base <url>` runs the same browser checks against the
+deployment rather than a local copy — the headers, the rewrite rules and the
+CSP only exist on the real host. One caveat: a push deploys, and the alias
+moves to the new deployment. Running the check against the live URL while a
+deploy is in flight fails in confusing ways (captions that never arrive, a
+Start button that never flips). Let the deploy settle first.
+
 The irony is deliberate and worth stating out loud: the site that explains why
 this application must run locally is the only part of it that runs anywhere
 else.

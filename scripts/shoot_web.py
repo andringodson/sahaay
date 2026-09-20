@@ -32,6 +32,18 @@ WEB_DIR = REPO_ROOT / "web"
 OUT_DIR = REPO_ROOT / "docs" / "img"
 
 
+def shown(path: Path) -> str:
+    """Repo-relative when it can be, absolute otherwise.
+
+    --out can point anywhere, and relative_to raises rather than falling
+    back when it cannot.
+    """
+    try:
+        return str(path.relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
+
+
 def free_port() -> int:
     with contextlib.closing(socket.socket()) as s:
         s.bind(("127.0.0.1", 0))
@@ -94,7 +106,7 @@ def main() -> int:
         page.goto(f"{base}/", wait_until="networkidle")
         if not args.base:
             page.screenshot(path=str(args.out / "site.png"), full_page=True)
-            print(f"wrote {(args.out / 'site.png').relative_to(REPO_ROOT)}")
+            print(f"wrote {shown(args.out / 'site.png')}")
 
         if not page.locator("h1").first.is_visible():
             problems.append("landing page has no visible heading")
@@ -135,7 +147,7 @@ def main() -> int:
 
         if not args.base:
             page.screenshot(path=str(args.out / "demo.png"))
-            print(f"wrote {(args.out / 'demo.png').relative_to(REPO_ROOT)}")
+            print(f"wrote {shown(args.out / 'demo.png')}")
 
         print(f"\n  captions   {captions}")
         print(f"  glossary   {glossary}")
@@ -166,7 +178,7 @@ def main() -> int:
 
         if not args.base:
             phone.screenshot(path=str(args.out / "demo-mobile.png"))
-            print(f"wrote {(args.out / 'demo-mobile.png').relative_to(REPO_ROOT)}")
+            print(f"wrote {shown(args.out / 'demo-mobile.png')}")
         if caption_box:
             print(f"  caption area at 390px: {caption_box['height']:.0f}px tall")
 
