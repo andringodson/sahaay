@@ -73,8 +73,9 @@ This is the slide with the receipts. Put the table up and let it speak:
 
 | Whisper encoder | On-device | Layers on NPU |
 |---|---:|---:|
-| Snapdragon X Elite | **27.48 ms** | **129 / 129** |
+| Snapdragon X Elite | **27.6 ms** | **129 / 129** |
 | Snapdragon X2 Elite | **13.5 ms** | **129 / 129** |
+| Snapdragon X Plus 8-Core | **26.8 ms** | **129 / 129** |
 
 Say the two things that matter:
 
@@ -112,9 +113,28 @@ works.
 - Privacy: binds to `127.0.0.1`, no telemetry, no accounts, audio never written to disk
 
 ### 10 — What is next
-- Real WER measurement on a code-mixed Indian-English corpus
+- WER against **real speakers**, not synthesised speech — the current figure
+  ([docs/ACCURACY.md](ACCURACY.md)) is a floor, and the report says so
 - Speaker diarisation, so "the lecturer" and "a question from the back" separate
 - An Android build — the same QNN graphs already target Snapdragon mobile
+
+---
+
+## If you only have time for three slides
+
+Use 2 (the problem), 5 (the 7× concurrency measurement), and 7 (129/129 on
+the NPU). Those three carry the whole argument: a real problem, a measured
+reason the NPU is necessary, and independent proof it is being used.
+
+## The number to lead with
+
+If a judge gives you one sentence:
+
+> "Turning on the glossary makes captions seven times slower on a CPU. That
+> is why this is a Snapdragon application."
+
+Everything else — the accuracy table, the term protection, the degradation
+ladder — supports that sentence.
 
 ---
 
@@ -166,6 +186,9 @@ links anyone can open."
 
 - [ ] `run.bat --device` shows **Hexagon NPU active : yes** on the demo machine
 - [ ] `python scripts/bench.py --compare --write` — real NPU vs CPU numbers
+- [ ] `python scripts/concurrency.py --write` — **re-run on the Snapdragon device**; the
+      CPU column already shows 7x, and the NPU column is the payoff
+- [ ] `python scripts/accuracy.py --write` — WER and technical-term retention
 - [ ] `python scripts/aihub_profile.py --all --write` — job links in `docs/AIHUB.md`
 - [ ] README performance section updated with the real figures
 - [ ] Lecture clip chosen: genuinely code-mixed, with at least three technical terms
