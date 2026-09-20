@@ -1,6 +1,6 @@
 # The hosted site
 
-**[sahaay.vercel.app](https://sahaay.vercel.app)**
+**[sahaay-offline.vercel.app](https://sahaay-offline.vercel.app)**
 
 ## What is hosted, and what is not
 
@@ -88,6 +88,14 @@ vercel --prod
 `vercel.json` sets `outputDirectory: web` and a content-security policy that
 forbids the page from talking to anything but itself. `.vercelignore` keeps
 `models/` — over a gigabyte — out of the upload.
+
+The project is connected to the GitHub repository, so a push to `main`
+deploys on its own; the command above is for deploying without one.
+
+**On the name.** `sahaay.vercel.app` was already taken by someone else, so
+the deployment is `sahaay-offline.vercel.app`. Worth knowing before putting a
+URL on a slide — check the alias the deploy actually returns rather than the
+one you expected.
 
 The irony is deliberate and worth stating out loud: the site that explains why
 this application must run locally is the only part of it that runs anywhere

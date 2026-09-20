@@ -18,10 +18,10 @@ entirely on a Snapdragon-powered HP PC.
 
 *Do not open with the tech stack.* Open with the name and one sentence.
 
-Put **sahaay.vercel.app** on this slide and leave it there. A judge who wants
+Put **sahaay-offline.vercel.app** on this slide and leave it there. A judge who wants
 to check a number mid-talk can, and the site carries every measurement with
 its source link. It is also the fallback if the live demo misbehaves: the
-replay at [sahaay.vercel.app/demo](https://sahaay.vercel.app/demo/?play=1) is
+replay at [sahaay-offline.vercel.app/demo](https://sahaay-offline.vercel.app/demo/?play=1) is
 the same interface running the same events.
 
 ### 2 — The problem *(Use Case)*
@@ -113,7 +113,7 @@ works.
 
 ### 9 — Deployment *(Deployment & Accessibility)*
 - `install.ps1` → `run.bat`. No Node, no build step, no Docker
-- **The application is deliberately not hosted.** [sahaay.vercel.app](https://sahaay.vercel.app)
+- **The application is deliberately not hosted.** [sahaay-offline.vercel.app](https://sahaay-offline.vercel.app)
   is the evidence and a replay of a real session; there is no NPU in a
   datacenter, no audio to capture, and shipping a student's lecture to a
   server would contradict the entire premise ([docs/WEB.md](WEB.md))

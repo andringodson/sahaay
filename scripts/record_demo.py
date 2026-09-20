@@ -1,6 +1,6 @@
 """Record a session's event stream so the hosted demo replays real data.
 
-The public site at https://sahaay.vercel.app cannot run the pipeline - there
+The public site at https://sahaay-offline.vercel.app cannot run the pipeline - there
 is no NPU in a datacenter, no microphone, and the models are gigabytes. What
 it *can* do honestly is replay a session that did run, through the same UI,
 driven by the same events the browser receives over the WebSocket.

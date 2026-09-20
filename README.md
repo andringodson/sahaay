@@ -4,8 +4,8 @@
 
 Submitted to the Snapdragon® AI Lab Build & Present Challenge 2026.
 
-**[sahaay.vercel.app](https://sahaay.vercel.app)** — the measured results, and
-the real interface [replaying a real session](https://sahaay.vercel.app/demo/?play=1).
+**[sahaay-offline.vercel.app](https://sahaay-offline.vercel.app)** — the measured results, and
+the real interface [replaying a real session](https://sahaay-offline.vercel.app/demo/?play=1).
 The application itself is not hosted there and cannot be: there is no NPU in a
 datacenter and no audio to capture, and the whole claim is that none of this
 leaves your machine. [Why, in full](docs/WEB.md).
