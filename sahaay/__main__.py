@@ -6,6 +6,8 @@ Three modes, because they serve three different audiences:
 * ``--cli``     - captions in the terminal (what you debug with)
 * ``--device``  - print the execution provider and exit (what a judge runs
                   first to check the NPU claim is real)
+* ``--selftest`` - check every dependency and report ok/degraded/failed
+                   (what a judge runs second, when something looks wrong)
 """
 
 from __future__ import annotations
@@ -133,6 +135,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--cli", action="store_true", help="print captions in the terminal")
     parser.add_argument("--device", action="store_true", help="show the execution provider and exit")
     parser.add_argument(
+        "--selftest", action="store_true",
+        help="check everything and report what works, then exit",
+    )
+    parser.add_argument("--quick", action="store_true", help="with --selftest, skip the pipeline run")
+    parser.add_argument(
         "--mock", action="store_true", help="run without models, using a scripted transcript"
     )
     parser.add_argument(
@@ -150,6 +157,13 @@ def main(argv: list[str] | None = None) -> int:
         return _print_device()
 
     cfg = load_config()
+
+    if args.selftest:
+        from .selftest import report, run
+
+        checks, code = run(cfg, quick=args.quick)
+        print(report(checks))
+        return code
     if args.mock:
         cfg.mock = True
     if args.lang:

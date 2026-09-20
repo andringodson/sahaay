@@ -71,6 +71,32 @@ For the real thing:
 
 Then play any lecture and press **Start**.
 
+## Something not working? Ask it
+
+```powershell
+.un.bat --selftest
+```
+
+```
+  + onnxruntime               version 1.30.0
+  ~ Hexagon NPU               CPU (QNN present but bound to CPU...)
+                              -> Expected on any non-Snapdragon machine
+  + live caption transport    websockets
+  x speech recognition        no Whisper weights found
+                              -> python scripts/download_models.py --asr
+  ~ translation               captions will not be translated
+                              -> python scripts/download_models.py --translate
+  + end-to-end pipeline       2 captions in mock mode
+
+  3 ok, 5 degraded, 1 failed
+```
+
+Three states, and the distinction is deliberate: **degraded** means missing
+with a documented fallback, **failed** means the app will not work. A missing
+NPU is degraded — the product is designed to run without one. Missing Whisper
+weights are a failure, because there is no captioning without them. Every
+non-ok line says what to do about it.
+
 ## Is it actually using the NPU?
 
 Ask it:
