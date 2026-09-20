@@ -213,3 +213,53 @@ class TestModelResolution:
 
         cfg = AsrConfig()
         assert resolve_model_id(tmp_path, cfg.model_id, cfg.candidates) == cfg.candidates[0]
+
+
+class TestDeviceAwareModelChoice:
+    """Which glossary model to prefer depends on the hardware.
+
+    Measured on an x86 CPU: the 3B runs at 7.4 tok/s against the 1B's 16.9 -
+    the expected ratio - but it needs ~3.5 GB resident, and under memory
+    pressure one 146-token glossary call was observed taking 35 minutes.
+    A glossary entry that arrives after the lecture has ended is not a
+    glossary entry, so on CPU the smaller model wins.
+    """
+
+    def candidates(self) -> list[str]:
+        from sahaay.config import GlossaryConfig
+
+        return GlossaryConfig().candidates
+
+    def test_npu_keeps_the_configured_order(self):
+        from sahaay.llm import order_candidates
+
+        c = self.candidates()
+        assert order_candidates(c, npu_active=True) == c
+
+    def test_npu_prefers_the_larger_model(self):
+        from sahaay.llm import order_candidates
+
+        assert "3b" in order_candidates(self.candidates(), npu_active=True)[0].lower()
+
+    def test_cpu_prefers_the_smaller_model(self):
+        from sahaay.llm import order_candidates
+
+        assert "1b" in order_candidates(self.candidates(), npu_active=False)[0].lower()
+
+    def test_no_candidate_is_lost(self):
+        from sahaay.llm import order_candidates
+
+        c = self.candidates()
+        for npu in (True, False):
+            assert sorted(order_candidates(c, npu)) == sorted(c)
+
+    def test_empty_list_is_safe(self):
+        from sahaay.llm import order_candidates
+
+        assert order_candidates([], npu_active=False) == []
+
+    def test_unrecognised_names_keep_their_position(self):
+        from sahaay.llm import order_candidates
+
+        c = ["mystery_model", "llama_3_2_1b_instruct_genai"]
+        assert order_candidates(c, npu_active=False)[0] == "llama_3_2_1b_instruct_genai"

@@ -110,6 +110,7 @@ class Pipeline:
             self.cfg.glossary.model_id,
             mock=self.cfg.mock,
             candidates=self.cfg.glossary.candidates,
+            npu_active=self.factory.npu_active,
         )
 
         self._glossary = GlossaryWorker(

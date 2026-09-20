@@ -136,6 +136,8 @@ Details in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 | Glossary + notes | Llama 3.2 3B Instruct | Hexagon assets | [onnx-community/Llama-3.2-3B-instruct-hexagon-npu-assets](https://huggingface.co/onnx-community/Llama-3.2-3B-instruct-hexagon-npu-assets) |
 | Glossary (portable) | Llama 3.2 3B / 1B Instruct | int4 | [GENAI-ONNX builds](https://huggingface.co/onnx-community/Llama-3.2-3B-Instruct-GENAI-ONNX) — ship `genai_config.json`, which plain ONNX exports do not |
 
+**Which glossary model gets used depends on the hardware.** Measured on x86 CPU: the 3B runs at 7.4 tok/s against the 1B's 16.9, and needs ~3.5 GB resident — under memory pressure one 146-token call took 35 minutes. So with the NPU active the 3B is preferred for its better explanations; on CPU the 1B is, because a glossary entry that arrives after the lecture has ended is not a glossary entry.
+
 No weights are vendored. `scripts/download_models.py --auto` picks the Snapdragon or portable tier by architecture.
 
 ## It degrades instead of breaking
@@ -191,9 +193,9 @@ numbers for the whole pipeline come from the x86 machine, and
 [docs/BENCHMARKS.md](docs/BENCHMARKS.md) says so on every row. Word error rate
 is measured, but against **synthesised** speech ([docs/ACCURACY.md](docs/ACCURACY.md)) —
 real-speaker accuracy needs a labelled code-mixed corpus and is still unknown.
-The glossary was
-validated with Llama 3.2 **1B**; the 3B is the shipping target and uses an
-identical GenAI format, but produces better content than the numbers here show.
+Both the 1B and 3B glossary
+models have now been run; the 3B writes visibly better explanations, and the
+app picks between them by hardware (see below).
 
 ## Performance on real Snapdragon silicon
 

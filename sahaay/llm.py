@@ -275,11 +275,38 @@ def find_genai_model(root: Path) -> Path | None:
     return candidates[0]
 
 
+def order_candidates(candidates: list[str], npu_active: bool) -> list[str]:
+    """Put the model that suits this device first.
+
+    Measured on an x86 CPU: the 3B runs at 7.4 tok/s against the 1B's 16.9,
+    which is the expected ratio - but the 3B needs ~3.5 GB resident, and on a
+    machine short of RAM it degrades far past that. One 146-token glossary
+    call was observed taking 35 minutes under memory pressure, versus about
+    six seconds for the same call on the 1B.
+
+    So on a CPU-only machine the 1B is the right default: a glossary entry
+    that arrives after the lecture has ended is not a glossary entry. With
+    the NPU active the larger model is preferred, because that is the
+    hardware it was chosen for and its explanations are visibly better.
+    """
+    if npu_active:
+        return list(candidates)
+
+    def cpu_rank(name: str) -> tuple[int, int]:
+        lowered = name.lower()
+        # Smaller first on CPU; anything unrecognised keeps its position.
+        size = 0 if "1b" in lowered else 1 if "3b" in lowered else 2
+        return (size, candidates.index(name))
+
+    return sorted(candidates, key=cpu_rank)
+
+
 def create_llm(
     models_dir: Path,
     model_id: str,
     mock: bool = False,
     candidates: list[str] | None = None,
+    npu_active: bool = False,
 ) -> LlmBackend:
     """Walk the degradation ladder and return the best backend available.
 
@@ -293,7 +320,9 @@ def create_llm(
         return HeuristicLlm()
 
     if model_id == "auto" or not model_id:
-        model_id = resolve_model_id(models_dir, model_id, candidates or [])
+        ordered = order_candidates(candidates or [], npu_active)
+        model_id = resolve_model_id(models_dir, model_id, ordered)
+        log.info("glossary model: %s (%s)", model_id, "NPU" if npu_active else "CPU")
 
     model_dir = find_genai_model(models_dir / model_id)
     if model_dir is not None:

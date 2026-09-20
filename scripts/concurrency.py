@@ -230,7 +230,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     llm = create_llm(
-        cfg.models_dir, cfg.glossary.model_id, candidates=cfg.glossary.candidates
+        cfg.models_dir, cfg.glossary.model_id,
+        candidates=cfg.glossary.candidates, npu_active=device.npu_active
     )
     if llm.name == "heuristic":
         print("  No LLM weights present - there is no load to measure.")
