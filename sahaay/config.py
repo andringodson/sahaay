@@ -180,10 +180,16 @@ class Config:
     # developable (and demoable) on a machine with no models downloaded.
     mock: bool = False
 
+    # Play a WAV through the pipeline instead of capturing the sound card.
+    # The only way to reproduce a run: loopback capture cannot be scripted.
+    audio_file: Path | None = None
+    audio_rate: float = 1.0
+
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d["models_dir"] = str(self.models_dir)
         d["sessions_dir"] = str(self.sessions_dir)
+        d["audio_file"] = str(self.audio_file) if self.audio_file else None
         return d
 
 

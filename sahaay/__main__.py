@@ -18,6 +18,7 @@ import logging
 import signal
 import sys
 import time
+from pathlib import Path
 
 from .config import SUPPORTED_LANGUAGES, load_config
 
@@ -145,6 +146,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--lang", choices=sorted(SUPPORTED_LANGUAGES), help="translate captions into this language"
     )
+    parser.add_argument(
+        "--audio-file", type=Path, metavar="WAV",
+        help="play a WAV through the pipeline instead of capturing the sound card",
+    )
+    parser.add_argument(
+        "--audio-rate", type=float, default=1.0, metavar="X",
+        help="with --audio-file, play at X times real time (default 1.0)",
+    )
     parser.add_argument("--port", type=int, help="UI port (default 8756)")
     parser.add_argument("--no-browser", action="store_true", help="do not open a browser tab")
     parser.add_argument("-v", "--verbose", action="store_true")
@@ -168,6 +177,11 @@ def main(argv: list[str] | None = None) -> int:
         cfg.mock = True
     if args.lang:
         cfg.translate.target_language = args.lang
+    if args.audio_file:
+        if not args.audio_file.exists():
+            parser.error(f"no such audio file: {args.audio_file}")
+        cfg.audio_file = args.audio_file
+        cfg.audio_rate = args.audio_rate
     if args.port:
         cfg.server.port = args.port
     if args.no_browser:

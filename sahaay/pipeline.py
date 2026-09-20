@@ -132,7 +132,12 @@ class Pipeline:
         self.started_at = dt.datetime.now()
         self._stop.clear()
 
-        self._source = create_source(self.cfg.audio, mock=self.cfg.mock)
+        self._source = create_source(
+            self.cfg.audio,
+            mock=self.cfg.mock,
+            audio_file=self.cfg.audio_file,
+            rate=self.cfg.audio_rate,
+        )
         self._source.start()
 
         vad = create_vad(self.cfg.models_dir, self.cfg.vad)
@@ -194,7 +199,7 @@ class Pipeline:
 
             self.metrics.add_audio(chunk.size / self.cfg.audio.sample_rate)
 
-            if self.cfg.mock:
+            if self.cfg.mock and self.cfg.audio_file is None:
                 # Mock audio is silence, so the VAD would never fire. Emit a
                 # synthetic segment on a timer instead so the full downstream
                 # path - ASR, translation, glossary, UI - still exercises.

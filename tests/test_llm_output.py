@@ -263,3 +263,65 @@ class TestDeviceAwareModelChoice:
 
         c = ["mystery_model", "llama_3_2_1b_instruct_genai"]
         assert order_candidates(c, npu_active=False)[0] == "llama_3_2_1b_instruct_genai"
+
+
+class TestSeedGlossaryLookup:
+    """Inflected forms have to reach the entry that explains them.
+
+    A lecture says "diagonalization"; the glossary stores "diagonalize".
+    Exact lookup missed it, so the sidebar offered "install the language
+    model for a full explanation" for a term it could already explain - and
+    listed the two forms as separate entries for the same idea.
+    """
+
+    def test_exact_term_resolves_to_itself(self):
+        from sahaay.llm import SEED_GLOSSARY, seed_entry
+
+        key, explanation = seed_entry("determinant")
+        assert key == "determinant"
+        assert explanation == SEED_GLOSSARY["determinant"]
+
+    @pytest.mark.parametrize(
+        ("word", "canonical"),
+        [
+            ("eigenvalues", "eigenvalue"),
+            ("Eigenvalues", "eigenvalue"),
+            ("diagonalization", "diagonalize"),
+            ("diagonalizing", "diagonalize"),
+            ("diagonalized", "diagonalize"),
+        ],
+    )
+    def test_inflections_reach_the_stored_entry(self, word, canonical):
+        from sahaay.llm import seed_entry
+
+        key, explanation = seed_entry(word)
+        assert key == canonical
+        assert explanation, f"{word} resolved to {canonical} but got no explanation"
+
+    def test_unknown_words_are_not_invented(self):
+        """A wrong entry costs more than a missing one."""
+        from sahaay.llm import seed_entry
+
+        key, explanation = seed_entry("photosynthesis")
+        assert key == "photosynthesis"
+        assert explanation is None
+
+    def test_both_forms_produce_one_sidebar_entry(self):
+        from sahaay.llm import HeuristicLlm
+
+        result = HeuristicLlm().generate(
+            "<transcript>We can diagonalize the matrix. "
+            "Diagonalization turns a hard repeated multiplication into a simple one."
+            "</transcript>"
+        )
+        terms = [line.split("::")[0].strip() for line in result.text.splitlines()]
+        assert terms.count("diagonalize") == 1
+        assert "diagonalization" not in terms
+
+    def test_a_known_term_never_falls_back_to_the_placeholder(self):
+        from sahaay.llm import HeuristicLlm
+
+        result = HeuristicLlm().generate(
+            "<transcript>Diagonalization is the goal.</transcript>"
+        )
+        assert "install the language model" not in result.text

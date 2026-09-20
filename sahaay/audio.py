@@ -11,7 +11,10 @@ from __future__ import annotations
 import logging
 import queue
 import threading
+import time
+import wave
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 
@@ -254,5 +257,114 @@ class MockSource(AudioSource):
         return np.zeros(n, dtype=np.float32)
 
 
-def create_source(cfg: AudioConfig, mock: bool = False) -> AudioSource:
+def load_wav(path: Path, target_rate: int) -> np.ndarray:
+    """Read a WAV file to float32 mono at ``target_rate``.
+
+    Deliberately stdlib-only. Pulling in soundfile or librosa to read a
+    16-bit PCM file would add a compiled dependency to the install for
+    something ``wave`` already does.
+    """
+    with wave.open(str(path), "rb") as w:
+        channels = w.getnchannels()
+        width = w.getsampwidth()
+        rate = w.getframerate()
+        raw = w.readframes(w.getnframes())
+
+    if width == 1:  # unsigned, midpoint 128
+        data = (np.frombuffer(raw, dtype=np.uint8).astype(np.float32) - 128.0) / 128.0
+    elif width == 2:
+        data = np.frombuffer(raw, dtype="<i2").astype(np.float32) / 32768.0
+    elif width == 4:
+        data = np.frombuffer(raw, dtype="<i4").astype(np.float32) / 2147483648.0
+    else:
+        raise ValueError(f"unsupported sample width: {width * 8}-bit")
+
+    if channels > 1:
+        data = data.reshape(-1, channels).mean(axis=1)
+
+    if rate != target_rate:
+        n = int(round(data.size * target_rate / rate))
+        data = np.interp(
+            np.linspace(0.0, data.size - 1, n, dtype=np.float64),
+            np.arange(data.size, dtype=np.float64),
+            data,
+        ).astype(np.float32)
+
+    return np.ascontiguousarray(data, dtype=np.float32)
+
+
+class FileSource(AudioSource):
+    """Play a WAV file through the pipeline as though it were live audio.
+
+    This exists because the pipeline is otherwise only reachable through a
+    sound card: ``WasapiSource`` captures whatever the speakers are playing,
+    which cannot be scripted, and ``MockSource`` emits silence and bypasses
+    the VAD entirely. Neither lets anyone reproduce a real run.
+
+    Chunks are paced against the wall clock rather than returned as fast as
+    they can be read, because the pipeline's behaviour under load is the
+    interesting part - handing it an hour of audio instantly would measure
+    throughput, not the live path. ``rate`` scales that pacing.
+
+    A tail of silence is appended so the segmenter's pause detector flushes
+    the final phrase; without it the last sentence of every file is lost.
+    """
+
+    def __init__(self, cfg: AudioConfig, path: Path, rate: float = 1.0, tail_s: float = 1.2):
+        self.cfg = cfg
+        self.path = Path(path)
+        self.rate = max(0.0, rate)
+        samples = load_wav(self.path, cfg.sample_rate)
+        tail = np.zeros(int(cfg.sample_rate * tail_s), dtype=np.float32)
+        self._samples = np.concatenate([samples, tail])
+        self.duration_s = samples.size / cfg.sample_rate
+        self._pos = 0
+        self._running = False
+        self._stop = threading.Event()
+        self._t0 = 0.0
+        self.exhausted = False
+
+    def start(self) -> None:
+        self._pos = 0
+        self.exhausted = False
+        self._running = True
+        self._stop.clear()
+        self._t0 = time.monotonic()
+
+    def stop(self) -> None:
+        self._running = False
+        self._stop.set()
+
+    def read(self, timeout: float = 1.0) -> np.ndarray | None:
+        if not self._running:
+            return None
+
+        if self._pos >= self._samples.size:
+            # Keep behaving like a live source that has gone quiet rather
+            # than tearing down: the caller decides when the session ends.
+            self.exhausted = True
+            self._stop.wait(min(timeout, 0.05))
+            return None
+
+        n = int(self.cfg.sample_rate * 0.032)
+        chunk = self._samples[self._pos : self._pos + n]
+        self._pos += chunk.size
+
+        if self.rate > 0:
+            due = self._t0 + (self._pos / self.cfg.sample_rate) / self.rate
+            delay = due - time.monotonic()
+            if delay > 0:
+                self._stop.wait(delay)
+
+        return chunk
+
+
+def create_source(
+    cfg: AudioConfig,
+    mock: bool = False,
+    audio_file: Path | None = None,
+    rate: float = 1.0,
+) -> AudioSource:
+    if audio_file is not None:
+        return FileSource(cfg, audio_file, rate=rate)
     return MockSource(cfg) if mock else WasapiSource(cfg)

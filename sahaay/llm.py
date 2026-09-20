@@ -193,6 +193,43 @@ SEED_GLOSSARY: dict[str, str] = {
 }
 
 
+def seed_entry(term: str) -> tuple[str, str | None]:
+    """Resolve a word to its seeded glossary entry, allowing for inflection.
+
+    A lecture says "diagonalization"; the glossary stores "diagonalize".
+    Exact lookup missed it and the sidebar showed "install the language
+    model for a full explanation" next to a term the glossary could in fact
+    explain - and listed "diagonalize" separately, so the same idea appeared
+    twice.
+
+    Returns the canonical key and its explanation, or the word itself and
+    None when nothing matches. Same approach as
+    :meth:`~sahaay.translate.TermProtector._is_protected`: strip the handful
+    of endings that actually occur rather than take on a stemmer.
+    """
+    word = term.lower().strip("-")
+    if word in SEED_GLOSSARY:
+        return word, SEED_GLOSSARY[word]
+
+    candidates: list[str] = []
+    for suffix in ("s", "es", "ed", "ing"):
+        if word.endswith(suffix):
+            stem = word[: -len(suffix)]
+            # English drops the silent e before -ing/-ed; put it back.
+            candidates += [stem, stem + "e"]
+    for suffix, replacement in (("ization", "ize"), ("isation", "ise"), ("ation", "ate")):
+        if word.endswith(suffix):
+            candidates.append(word[: -len(suffix)] + replacement)
+    if word.endswith("ices"):  # matrices -> matrix
+        candidates.append(word[:-4] + "ix")
+
+    for candidate in candidates:
+        if candidate in SEED_GLOSSARY:
+            return candidate, SEED_GLOSSARY[candidate]
+
+    return word, None
+
+
 class HeuristicLlm(LlmBackend):
     """Model-free fallback.
 
@@ -213,23 +250,30 @@ class HeuristicLlm(LlmBackend):
         m = re.search(r"<transcript>(.*?)</transcript>", prompt, re.S)
         text = m.group(1) if m else prompt
 
-        found: list[str] = []
+        found: dict[str, str] = {}
         for word in re.findall(r"[A-Za-z][A-Za-z\-]{3,}", text):
             key = word.lower().strip("-")
-            if key in _STOPWORDS or key in found:
+            if key in _STOPWORDS:
+                continue
+            # Inflections collapse onto the canonical term, so "diagonalize"
+            # and "diagonalization" are one sidebar entry, not two.
+            canonical, explanation = seed_entry(key)
+            if canonical in found:
                 continue
             # Known terms first. Unknown ones only clear the bar if the
             # morphology is strongly scientific - a wrong entry costs more
             # credibility than a missing one costs coverage.
-            if key in SEED_GLOSSARY or self._looks_technical(key):
-                found.append(key)
+            if explanation is not None:
+                found[canonical] = explanation
+            elif self._looks_technical(key):
+                found[canonical] = (
+                    "Technical term from this lecture - install the language "
+                    "model for a full explanation."
+                )
             if len(found) >= 3:
                 break
 
-        lines = [
-            f"{term} :: {SEED_GLOSSARY.get(term, 'Technical term from this lecture - install the language model for a full explanation.')}"
-            for term in found
-        ]
+        lines = [f"{term} :: {explanation}" for term, explanation in found.items()]
         return LlmResult(
             text="\n".join(lines),
             latency_ms=(time.perf_counter() - t0) * 1000.0,
