@@ -27,6 +27,7 @@ TRANSLATION = "translation"   # translation attached to an existing caption id
 GLOSS = "gloss"               # a jargon term + explanation
 STATUS = "status"             # pipeline/device state for the header
 METRIC = "metric"             # per-stage latency sample
+LEVEL = "level"               # input loudness, ~5/s, for the header meter
 NOTES = "notes"               # end-of-session summary payload
 ERROR = "error"
 
@@ -74,7 +75,9 @@ class EventBus:
         ev = Event(kind=kind, data=data)
         # Partial captions are transient by definition - replaying them to a
         # late subscriber would show text that has already been superseded.
-        if kind not in {CAPTION_PARTIAL, METRIC}:
+        # Level samples arrive five times a second and describe a moment that
+        # has passed; keeping them would evict the transcript from history.
+        if kind not in {CAPTION_PARTIAL, METRIC, LEVEL}:
             with self._lock:
                 self._history.append(ev)
                 if len(self._history) > self._history_limit:

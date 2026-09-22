@@ -19,6 +19,7 @@ import datetime as dt
 import logging
 import queue
 import threading
+import time
 
 import numpy as np
 
@@ -192,12 +193,25 @@ class Pipeline:
 
     def _capture_loop(self) -> None:
         mock_tick = 0
+        level_sent = 0.0
         while not self._stop.is_set():
             chunk = self._source.read(timeout=0.5) if self._source else None
             if chunk is None:
                 continue
 
             self.metrics.add_audio(chunk.size / self.cfg.audio.sample_rate)
+
+            # Input loudness, five times a second. The UI draws it as a meter
+            # because every other signal the app gives is downstream of a
+            # caption: with a muted output or the wrong loopback device the
+            # screen stays empty and says nothing about why. A meter that
+            # does not move is an answer.
+            now = time.monotonic()
+            if now - level_sent >= 0.2:
+                level_sent = now
+                rms = float(np.sqrt(np.mean(np.square(chunk)))) if chunk.size else 0.0
+                self.metrics.set_level(rms)
+                self.bus.publish(ev.LEVEL, rms=round(rms, 5))
 
             if self.cfg.mock and self.cfg.audio_file is None:
                 # Mock audio is silence, so the VAD would never fire. Emit a

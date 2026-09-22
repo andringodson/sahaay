@@ -157,6 +157,22 @@ function onGloss(msg) {
 
 /* ---------- metrics ---------- */
 
+function onLevel(msg) {
+  const fill = $("level-fill");
+  if (!fill) return;
+  // Square root, not linear: speech sits between 0.01 and 0.1 rms, and a
+  // linear bar would sit near zero for all of it and tell you nothing.
+  const rms = Math.max(0, Number(msg.rms) || 0);
+  const pct = Math.min(100, Math.round(Math.sqrt(rms / 0.12) * 100));
+  fill.style.width = pct + "%";
+
+  const quiet = rms < 0.0002;
+  $("level").classList.toggle("silent", state.running && quiet);
+  $("level").title = quiet
+    ? "No audio reaching the app — check the output device is not muted"
+    : `Input level ${rms.toFixed(4)} rms`;
+}
+
 function onMetric(msg) {
   if (msg.realtime_factor == null) return;
   const rtf = Number(msg.realtime_factor);
@@ -294,6 +310,7 @@ function connect() {
       case "translation": onTranslation(msg); break;
       case "gloss": onGloss(msg); break;
       case "metric": onMetric(msg); break;
+      case "level": onLevel(msg); break;
       case "notes": onNotes(msg); break;
       case "status": onStatus(msg); break;
       case "error": toast(msg.message, true); break;

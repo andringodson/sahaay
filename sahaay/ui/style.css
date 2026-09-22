@@ -345,3 +345,26 @@ kbd {
   max-width: min(90vw, 44ch);
 }
 .toast.error { border-color: var(--danger); color: var(--danger); }
+
+/* ---------- input level ---------- */
+
+/* Deliberately small and quiet: it is a reassurance, not a feature. It earns
+   its place because a muted output device and a silent room produce exactly
+   the same empty caption list. */
+.level {
+  width: 68px;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  flex: none;
+}
+.level-fill {
+  display: block;
+  width: 0%;
+  height: 100%;
+  background: var(--npu);
+  transition: width 0.12s linear;
+}
+.level.silent .level-fill { background: var(--warn); }

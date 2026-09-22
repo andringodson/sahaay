@@ -9,7 +9,6 @@ driver install, which is what makes one-click deployment possible.
 from __future__ import annotations
 
 import logging
-import queue
 import threading
 import time
 import wave
@@ -21,6 +20,8 @@ import numpy as np
 from .config import AudioConfig
 
 log = logging.getLogger(__name__)
+
+_EMPTY = np.empty(0, dtype=np.float32)
 
 
 @dataclass
@@ -48,19 +49,42 @@ class AudioSource:
 class WasapiSource(AudioSource):
     """Captures speaker output and/or microphone via PyAudioWPatch.
 
-    Both streams are resampled to 16 kHz mono and summed. Summing rather than
+    Both streams are resampled to 16 kHz mono and mixed. Mixing rather than
     picking one means a hybrid classroom - a lecturer in the room plus a
     remote participant on the call - produces a single coherent transcript.
+
+    The mixing is real, which it was not always. Both callbacks used to push
+    into one queue, so ``read()`` handed the segmenter alternating 32 ms
+    chunks from two different microphones rather than their sum: lecture
+    audio chopped with room audio. It also meant ``add_audio`` counted every
+    second twice, so the app's own real-time factor read about twice as good
+    as it was. Caught by playing a tone and noticing 12.4 s arrive during a
+    6 s listen.
+
+    Now each stream has its own buffer and ``read()`` returns one aligned
+    block summed across whichever streams are live.
     """
+
+    # 32 ms at 16 kHz: one VAD frame, and the same size the callbacks deliver.
+    BLOCK = 512
+
+    # A stream that has not delivered for this long is treated as silent
+    # rather than holding the mix back. A muted or unplugged device must not
+    # stall the lecture.
+    STALE_AFTER = 0.3
 
     def __init__(self, cfg: AudioConfig):
         self.cfg = cfg
-        self._q: queue.Queue[np.ndarray] = queue.Queue(maxsize=200)
         self._streams: list = []
         self._pa = None
         self._running = False
         # Per-source leftovers from resampling, keyed by stream index.
         self._resample_tail: dict[int, np.ndarray] = {}
+        # Per-source pending samples, and when each last delivered.
+        self._pending: dict[int, np.ndarray] = {}
+        self._last_seen: dict[int, float] = {}
+        self._mix_lock = threading.Lock()
+        self._arrived = threading.Event()
 
     # -- device discovery --------------------------------------------------
 
@@ -103,11 +127,7 @@ class WasapiSource(AudioSource):
                     samples = samples.reshape(-1, channels).mean(axis=1)
                 samples = self._to_16k(samples, native_rate, tag)
                 if samples.size:
-                    self._q.put_nowait(samples)
-            except queue.Full:
-                # Dropping a frame is better than stalling the audio driver
-                # callback, which would glitch the user's own playback.
-                log.debug("audio queue full; dropped frame")
+                    self._push(tag, samples)
             except Exception as exc:  # noqa: BLE001
                 log.warning("audio callback error: %s", exc)
             import pyaudiowpatch as pyaudio  # type: ignore
@@ -192,6 +212,11 @@ class WasapiSource(AudioSource):
         if not opened:
             raise RuntimeError("No audio source could be opened (tried loopback and microphone).")
 
+        with self._mix_lock:
+            self._pending.clear()
+            self._last_seen.clear()
+        self._arrived.clear()
+
         self._running = True
         for s in self._streams:
             s.start_stream()
@@ -222,11 +247,67 @@ class WasapiSource(AudioSource):
             self._pa.terminate()
             self._pa = None
 
+    # -- mixing ------------------------------------------------------------
+
+    def _push(self, tag: int, samples: np.ndarray) -> None:
+        """Called from an audio driver callback. Must not block."""
+        with self._mix_lock:
+            buf = self._pending.get(tag)
+            buf = samples if buf is None or not buf.size else np.concatenate([buf, samples])
+            # Cap each buffer at a second. A stream nobody drains is a stream
+            # running ahead of the lecture; keeping the newest audio matters
+            # more than keeping all of it.
+            limit = self.cfg.sample_rate
+            if buf.size > limit:
+                buf = buf[-limit:]
+            self._pending[tag] = buf
+            self._last_seen[tag] = time.monotonic()
+        self._arrived.set()
+
+    def _live_tags(self) -> list[int]:
+        """Streams delivering recently enough to wait for."""
+        now = time.monotonic()
+        return [
+            tag for tag in self._pending
+            if now - self._last_seen.get(tag, 0.0) <= self.STALE_AFTER
+        ]
+
+    def _mix(self, tags: list[int], n: int) -> np.ndarray:
+        """Sum n samples from each named stream. Caller holds the lock."""
+        out = np.zeros(n, dtype=np.float32)
+        for tag in tags:
+            buf = self._pending.get(tag)
+            if buf is None or not buf.size:
+                continue
+            take = buf[:n]
+            out[: take.size] += take
+            self._pending[tag] = buf[n:]
+        # Two loud sources can sum past full scale; clipping is quieter than
+        # the wrap-around that would otherwise reach the mel front end.
+        return np.clip(out, -1.0, 1.0, out=out)
+
     def read(self, timeout: float = 1.0) -> np.ndarray | None:
-        try:
-            return self._q.get(timeout=timeout)
-        except queue.Empty:
-            return None
+        deadline = time.monotonic() + timeout
+
+        while True:
+            with self._mix_lock:
+                live = self._live_tags()
+                if live and all(
+                    self._pending.get(t, _EMPTY).size >= self.BLOCK for t in live
+                ):
+                    return self._mix(live, self.BLOCK)
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    # Out of time. Emit whatever arrived rather than nothing:
+                    # a short block beats a gap in the transcript.
+                    ready = [t for t in self._pending if self._pending[t].size]
+                    if not ready:
+                        return None
+                    n = min(self.BLOCK, max(self._pending[t].size for t in ready))
+                    return self._mix(ready, n)
+
+            self._arrived.wait(min(0.008, max(remaining, 0.001)))
+            self._arrived.clear()
 
 
 class MockSource(AudioSource):

@@ -31,6 +31,13 @@
   <div class="bar-right">
     <!-- The EP badge is the whole Snapdragon story in one element: it says
          what silicon the models are actually on, live. -->
+    <!-- Input level. Every other signal in this UI is downstream of a
+         caption, so a silent capture device looks exactly like a quiet
+         lecturer. This moves whenever sound reaches the app. -->
+    <div id="level" class="level" title="Input level" aria-hidden="true">
+      <span id="level-fill" class="level-fill"></span>
+    </div>
+
     <div id="device" class="badge badge-muted" title="Execution provider in use">
       <span class="dot"></span><span id="device-label">connecting…</span>
     </div>
