@@ -26,3 +26,4 @@ testaudio/
 # Vercel CLI link state and the OIDC token it writes - per-machine, secret
 .vercel/
 .env*
+.vercel

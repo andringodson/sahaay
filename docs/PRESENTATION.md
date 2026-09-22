@@ -9,6 +9,19 @@ Documentation**. Each slide below notes which one it is buying.
 
 ---
 
+## The deck
+
+**Built: <https://claude.ai/artifact/TpKeZmMe3ipSqivKeph9mG>** — 11 slides
+following the outline below, with speaker notes on every slide. It is private
+until you share it from the page's Share menu.
+
+The source is in [`slides/`](../slides/) and regenerates with
+`python slides/make_deck.py`. That matters: the concurrency figure has already
+reversed once, and a deck nobody can regenerate goes stale silently. When a
+number in `docs/` changes, change it in `slides/make_deck.py` and re-run.
+
+Export to PDF or PPTX from the deck page if Unstop wants a file.
+
 ## Slides (10)
 
 ### 1 — Title

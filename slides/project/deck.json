@@ -1,0 +1,46 @@
+{
+ "v": 4,
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-09-22T15:00:00Z"
+ },
+ "title": "Sahaay - Snapdragon AI Lab 2026",
+ "order": [
+  "cover",
+  "problem",
+  "who",
+  "demo",
+  "npu",
+  "architecture",
+  "proof",
+  "honesty",
+  "deployment",
+  "next",
+  "close"
+ ],
+ "sections": {
+  "why": {
+   "description": "Who needs this and why cloud captioning does not solve it",
+   "start": "cover"
+  },
+  "argument": {
+   "description": "The measurement that makes it a Snapdragon application",
+   "start": "demo"
+  },
+  "evidence": {
+   "description": "Proof it runs on the NPU, and what is still unproven",
+   "start": "proof"
+  }
+ },
+ "faces": {
+  "rubik": {
+   "family": "Rubik",
+   "href": "https://fonts.googleapis.com/css2?family=Rubik:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap"
+  },
+  "ibm-plex-sans": {
+   "family": "IBM Plex Sans",
+   "href": "https://fonts.googleapis.com/css2?family=Rubik:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap"
+  }
+ },
+ "designSystems": []
+}
