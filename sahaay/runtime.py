@@ -65,13 +65,31 @@ def _import_ort():
     return ort
 
 
+def _qnn_registered(ort) -> bool:  # noqa: ANN001
+    """Is the QNN plugin EP registered in this process?
+
+    ``get_available_providers()`` is the wrong list to ask. It reports the
+    providers built into the onnxruntime wheel; a *plugin* EP registered at
+    runtime shows up in ``get_ep_devices()``. On x86 the two happen to agree,
+    which is why asking the wrong one went unnoticed - and on ARM64 Windows,
+    the platform this ships to, they do not.
+    """
+    if hasattr(ort, "get_ep_devices"):
+        try:
+            if any(d.ep_name == "QNNExecutionProvider" for d in ort.get_ep_devices()):
+                return True
+        except Exception:  # noqa: BLE001
+            pass
+    return "QNNExecutionProvider" in ort.get_available_providers()
+
+
 def _register_qnn_plugin(ort) -> str | None:  # noqa: ANN001
     """Register the QNN plugin EP. Returns the QnnHtp.dll path, if any.
 
     Safe to call repeatedly: re-registering the same name raises, and that
     is not an error worth propagating.
     """
-    if "QNNExecutionProvider" in ort.get_available_providers():
+    if _qnn_registered(ort):
         return _htp_path()
 
     try:
@@ -93,6 +111,13 @@ def _register_qnn_plugin(ort) -> str | None:  # noqa: ANN001
         ort.register_execution_provider_library(oq.get_ep_name(), oq.get_library_path())
         log.info("registered %s from %s", oq.get_ep_name(), oq.get_library_path())
     except Exception as exc:  # noqa: BLE001
+        # "already registered" is the success case seen twice, not a failure.
+        # Returning None here told the caller the NPU was unavailable on a
+        # machine where it was registered and working - which is the exact
+        # silent-CPU-fallback this module exists to prevent.
+        if "already registered" in str(exc).lower():
+            log.debug("QNN execution provider was already registered")
+            return _htp_path()
         log.warning("could not register the QNN execution provider: %s", exc)
         return None
     return _htp_path()

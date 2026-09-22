@@ -16,14 +16,35 @@ ort = pytest.importorskip("onnxruntime", reason="onnxruntime not installed")
 
 class TestRegistration:
     def test_qnn_is_registered_when_the_package_is_present(self):
-        from sahaay.runtime import SessionFactory
+        from sahaay.runtime import SessionFactory, _qnn_registered
 
         SessionFactory()  # registration happens on import of the runtime
-        oq = pytest.importorskip("onnxruntime_qnn", reason="onnxruntime-qnn not installed")
-        assert oq.get_ep_name() in ort.get_available_providers(), (
+        pytest.importorskip("onnxruntime_qnn", reason="onnxruntime-qnn not installed")
+
+        # Asking get_available_providers() was wrong: that lists the providers
+        # compiled into the wheel, and QNN arrives at runtime as a plugin EP,
+        # which appears in get_ep_devices(). On x86 both lists happen to
+        # contain it, so this passed for weeks; on ARM64 Windows - the
+        # platform the product actually ships to - only get_ep_devices() does,
+        # and the ARM64 CI job caught it on its first run.
+        assert _qnn_registered(ort), (
             "QNN did not register. Without this the NPU path can never activate, "
             "even on a Snapdragon device."
         )
+
+    def test_reregistering_does_not_report_failure(self):
+        """The second call must still hand back the HTP path.
+
+        Re-registering raises "already registered". Treating that as an error
+        made the runtime report the NPU unavailable on a machine where it was
+        registered and working.
+        """
+        pytest.importorskip("onnxruntime_qnn", reason="onnxruntime-qnn not installed")
+        from sahaay.runtime import _register_qnn_plugin
+
+        first = _register_qnn_plugin(ort)
+        second = _register_qnn_plugin(ort)
+        assert first == second
 
     def test_registration_is_idempotent(self):
         from sahaay.runtime import SessionFactory
