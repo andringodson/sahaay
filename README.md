@@ -79,6 +79,29 @@ For the real thing:
 
 Then play any lecture and press **Start**.
 
+### Before you rely on it, check the audio path
+
+The most common way a live demo fails is silently: the app is running, the
+models are loaded, and nothing is reaching it. An empty caption list looks
+exactly the same whether the lecturer is quiet, the output device is muted,
+or Windows is playing to a different device than the one being captured.
+
+```powershell
+.\.venv\Scripts\python.exe scripts\check_audio.py --play
+```
+
+That plays a tone through the default output device and measures what the
+capture path actually receives. It prints `OK` only if real audio arrived —
+`--selftest` deliberately cannot tell you this, because it lists devices
+rather than reading from them.
+
+The header also carries a small **input meter**. If it moves, sound is
+reaching the pipeline. If it sits still while something is playing, the
+problem is the audio device, not the models.
+
+Expect the **first caption after about 5–10 seconds**: the models warm up,
+and a segment is only flushed once the speaker pauses.
+
 ## Something not working? Ask it
 
 ```powershell
