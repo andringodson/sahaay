@@ -139,6 +139,32 @@ def _htp_path() -> str | None:
         return None
 
 
+def _qnn_package_installed() -> bool:
+    try:
+        import onnxruntime_qnn  # type: ignore # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
+def _missing_reason(candidate: str) -> str:
+    """Why a provider is not in the available list.
+
+    "Not installed" and "installed but this machine has no such hardware"
+    look identical from ``get_available_providers()`` and mean completely
+    different things. Reported on ARM64 Windows with onnxruntime-qnn very
+    much installed, the old message said "QNN not installed" - which would
+    send someone on a Snapdragon laptop off to reinstall a package they
+    already have.
+    """
+    if candidate == "QNNExecutionProvider" and _qnn_package_installed():
+        return (
+            "onnxruntime-qnn is installed but its provider did not register "
+            "(no Qualcomm NPU on this machine?)"
+        )
+    return f"{_short(candidate)} not installed"
+
+
 def _qnn_hardware_type(ort) -> str | None:  # noqa: ANN001
     """What hardware the registered QNN provider is actually bound to.
 
@@ -224,7 +250,7 @@ class SessionFactory:
 
         for candidate in self.cfg.provider_priority:
             if candidate not in self._available:
-                skipped.append(f"{_short(candidate)} not installed")
+                skipped.append(_missing_reason(candidate))
                 continue
 
             # QNN registered but bound to CPU means no Hexagon on this box.

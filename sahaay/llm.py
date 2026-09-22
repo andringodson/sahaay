@@ -59,6 +59,10 @@ class GenAiLlm(LlmBackend):
     def __init__(self, model_dir: Path):
         import onnxruntime_genai as og  # type: ignore
 
+        # Recorded so the benchmark can name what it measured. Without it the
+        # table said "-" for the LLM row, the same gap that made the ASR
+        # number unverifiable.
+        self.model_dir = Path(model_dir)
         self._og = og
         t0 = time.perf_counter()
         self._model = og.Model(str(model_dir))
