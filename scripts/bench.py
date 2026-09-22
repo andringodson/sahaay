@@ -82,6 +82,41 @@ def summarise(stage: str, provider: str, samples: list[float], **extra) -> Resul
     )
 
 
+def model_name(backend) -> str | None:  # noqa: ANN001
+    """Which weights a backend actually loaded.
+
+    This field's absence is why the published ASR number was wrong for
+    months. ``model_id`` is "auto", and what auto resolves to depends on
+    which weights happen to be on the machine: a box with only
+    ``whisper_tiny_en`` downloaded benchmarks tiny, a box with
+    ``whisper_small_portable`` benchmarks small, and small is ~7x slower.
+    The table said neither, so the number could not be checked.
+    """
+    directory = getattr(backend, "model_dir", None)
+    return Path(directory).name if directory else None
+
+
+def real_speech(seconds: float, path: Path) -> np.ndarray:
+    """The first ``seconds`` of an actual recorded lecture.
+
+    Real speech, not a test tone: the encoder's cost is the same either way,
+    but the decoder is autoregressive and its cost tracks how many tokens
+    come out. Measured here, a sine-wave signal decodes to "[Music]" and
+    real speech decodes to a sentence - 1.2x the transcription time. Small
+    next to the model-choice error above, but free to get right, and it
+    means the harness prints text you can read and check.
+    """
+    from sahaay.audio import load_wav
+
+    audio = load_wav(path, 16_000)
+    want = int(seconds * 16_000)
+    if audio.size < want:
+        # Short file: repeat rather than pad with silence, which would
+        # measure the decoder doing nothing for the difference.
+        audio = np.tile(audio, int(np.ceil(want / max(audio.size, 1))))
+    return audio[:want]
+
+
 def synth_speech(seconds: float, sample_rate: int = 16_000) -> np.ndarray:
     """A speech-like test signal.
 
@@ -111,7 +146,9 @@ def timeit(fn, runs: int, warmup: int) -> list[float]:
     return samples
 
 
-def bench_provider(provider: str | None, runs: int, warmup: int) -> tuple[list[Result], dict]:
+def bench_provider(
+    provider: str | None, runs: int, warmup: int, audio: np.ndarray
+) -> tuple[list[Result], dict]:
     """Run every stage on one provider. Missing models are skipped, not faked."""
     from sahaay.asr import create_asr
     from sahaay.llm import create_llm
@@ -129,7 +166,6 @@ def bench_provider(provider: str | None, runs: int, warmup: int) -> tuple[list[R
     label = report.provider_label
     print(f"\n  == {label} ==")
 
-    audio = synth_speech(BENCH_AUDIO_SECONDS)
     results: list[Result] = []
 
     # mel -- always CPU, reported so asr can be read as model-only time.
@@ -143,8 +179,10 @@ def bench_provider(provider: str | None, runs: int, warmup: int) -> tuple[list[R
         samples = timeit(lambda: asr.transcribe(audio), runs, warmup)
         rtf = (statistics.fmean(samples) / 1000.0) / BENCH_AUDIO_SECONDS
         results.append(summarise("asr", label, samples, rtf=round(rtf, 3),
-                                 audio_s=BENCH_AUDIO_SECONDS))
-        print(f"     asr          {statistics.fmean(samples):8.1f} ms   RTF {rtf:.3f}")
+                                 audio_s=BENCH_AUDIO_SECONDS,
+                                 model=model_name(asr)))
+        print(f"     asr          {statistics.fmean(samples):8.1f} ms   RTF {rtf:.3f}"
+              f"   [{model_name(asr)}]")
     except Exception as exc:  # noqa: BLE001
         print(f"     asr          skipped ({type(exc).__name__}: {exc})")
 
@@ -155,8 +193,10 @@ def bench_provider(provider: str | None, runs: int, warmup: int) -> tuple[list[R
             print("     translate    skipped (weights not downloaded)")
         else:
             samples = timeit(lambda: tr.translate(SAMPLE_LINE, "hi"), runs, warmup)
-            results.append(summarise("translate", label, samples, target="hi"))
-            print(f"     translate    {statistics.fmean(samples):8.1f} ms")
+            results.append(summarise("translate", label, samples, target="hi",
+                                     model=model_name(tr)))
+            print(f"     translate    {statistics.fmean(samples):8.1f} ms"
+                  f"   [{model_name(tr)}]")
     except Exception as exc:  # noqa: BLE001
         print(f"     translate    skipped ({exc})")
 
@@ -179,8 +219,10 @@ def bench_provider(provider: str | None, runs: int, warmup: int) -> tuple[list[R
             tps = holder["r"].tokens_per_second if holder.get("r") else 0.0
             results.append(summarise("llm (glossary)", label, samples,
                                      tokens_per_second=round(tps, 1),
-                                     backend=llm.name))
-            print(f"     llm          {statistics.fmean(samples):8.1f} ms   {tps:.1f} tok/s")
+                                     backend=llm.name,
+                                     model=model_name(llm)))
+            print(f"     llm          {statistics.fmean(samples):8.1f} ms   {tps:.1f} tok/s"
+                  f"   [{model_name(llm)}]")
     except Exception as exc:  # noqa: BLE001
         print(f"     llm          skipped ({exc})")
 
@@ -209,21 +251,48 @@ def _observations(results: list[Result]) -> list[str]:
     )
 
     asr = next((r for r in results if r.stage == "asr"), None)
+    tr = next((r for r in results if r.stage == "translate"), None)
+
     if asr and "rtf" in asr.extra:
         rtf = asr.extra["rtf"]
-        verdict = "comfortably faster than real time" if rtf < 0.5 else (
-            "faster than real time, but with little headroom" if rtf < 1
+        # 0.5 was called "comfortable". It is not: transcription is only one
+        # stage, and the others run on the same cores.
+        verdict = "comfortably faster than real time" if rtf < 0.25 else (
+            "faster than real time, but without much headroom" if rtf < 1
             else "SLOWER than real time - captions will drift behind"
         )
-        out.append(f"- Speech recognition runs at RTF {rtf}, {verdict}.")
+        out.append(f"- Speech recognition alone runs at RTF {rtf}, {verdict}.")
 
-    tr = next((r for r in results if r.stage == "translate"), None)
+    # The stage table invites reading each row on its own. A caption pays the
+    # transcription and the translation one after the other, so the number
+    # that decides whether the product keeps up is their sum against the
+    # clip length - not the largest row.
+    if asr and tr and "audio_s" in asr.extra:
+        audio_s = asr.extra["audio_s"]
+        serial_ms = asr.mean_ms + tr.mean_ms
+        serial_rtf = (serial_ms / 1000.0) / audio_s
+        if serial_rtf >= 1.0:
+            out.append(
+                f"- **Transcription and translation together cost {serial_ms:.0f} ms "
+                f"for {audio_s:.0f} s of audio - RTF {serial_rtf:.2f}, past real "
+                "time.** They run one after the other for every caption, so the "
+                "per-stage rows above are each survivable and their sum is not. "
+                "This is before the glossary model is even running "
+                "([CONCURRENCY.md](CONCURRENCY.md))."
+            )
+        else:
+            out.append(
+                f"- Transcription and translation together cost {serial_ms:.0f} ms "
+                f"for {audio_s:.0f} s of audio - RTF {serial_rtf:.2f}. They run "
+                "one after the other for every caption, so this sum, not the "
+                "largest row, is what decides whether captions keep up."
+            )
+
     if tr and tr.mean_ms > 1500:
         out.append(
-            f"- Translation is the bottleneck here ({tr.mean_ms:.0f} ms per caption). "
-            "Segments are 1-12 s, so the pipeline still keeps up, but this is the "
-            "stage that most needs the NPU - it is a 600M encoder-decoder doing "
-            "autoregressive decoding, and on CPU that dominates everything else."
+            f"- Translation is the single heaviest stage ({tr.mean_ms:.0f} ms per "
+            "caption) and the one that most needs the NPU: a 600M encoder-decoder "
+            "doing autoregressive decoding, which on CPU dominates everything else."
         )
 
     llm = next((r for r in results if r.stage.startswith("llm")), None)
@@ -235,7 +304,9 @@ def _observations(results: list[Result]) -> list[str]:
     return out
 
 
-def render_markdown(all_results: list[Result], devices: list[dict], notes: str) -> str:
+def render_markdown(
+    all_results: list[Result], devices: list[dict], notes: str, signal: str = ""
+) -> str:
     now = dt.datetime.now().strftime("%d %b %Y")
     primary = devices[0] if devices else {}
 
@@ -253,11 +324,20 @@ def render_markdown(all_results: list[Result], devices: list[dict], notes: str) 
         f"- **ONNX Runtime** {primary.get('ort_version', '?')}",
         f"- **Providers available** {', '.join(primary.get('available_providers', [])) or 'none'}",
         f"- **Python** {platform.python_version()}",
+        f"- **Signal** {signal or 'unspecified'}",
         "",
         "## Results",
         "",
-        "| Stage | Provider | Runs | Mean | p50 | p95 | Min | Notes |",
-        "|---|---|---:|---:|---:|---:|---:|---|",
+        "**The model column is not decoration.** `model_id` is `auto`, so what",
+        "runs depends on which weights are on the machine. An earlier revision of",
+        "this file reported `asr` at 339.6 ms without naming the model: that was",
+        "`whisper_tiny_en`, on a box where the small weights had not been",
+        "downloaded. The product resolves to `whisper_small_portable`, which is",
+        "about seven times slower. A latency with no model beside it cannot be",
+        "checked, and this one was wrong for exactly that reason.",
+        "",
+        "| Stage | Model | Provider | Runs | Mean | p50 | p95 | Min | Notes |",
+        "|---|---|---|---:|---:|---:|---:|---:|---|",
     ]
 
     for r in all_results:
@@ -268,8 +348,9 @@ def render_markdown(all_results: list[Result], devices: list[dict], notes: str) 
             extra_bits.append(f"{r.extra['tokens_per_second']} tok/s")
         if "audio_s" in r.extra:
             extra_bits.append(f"{r.extra['audio_s']}s audio")
+        model = r.extra.get("model") or "-"
         lines.append(
-            f"| {r.stage} | {r.provider} | {r.runs} | {r.mean_ms:.1f} ms | "
+            f"| {r.stage} | `{model}` | {r.provider} | {r.runs} | {r.mean_ms:.1f} ms | "
             f"{r.p50_ms:.1f} ms | {r.p95_ms:.1f} ms | {r.min_ms:.1f} ms | "
             f"{', '.join(extra_bits)} |"
         )
@@ -293,10 +374,15 @@ def render_markdown(all_results: list[Result], devices: list[dict], notes: str) 
         "graph finalisation, which can take seconds. Reporting that as steady-state",
         "latency would flatter the CPU column substantially.",
         "",
-        "**These are latency numbers, not accuracy numbers.** The harness uses a",
-        "synthetic speech-like signal, because the encoder does identical compute",
-        "regardless of what was said. Word error rate needs a real labelled corpus",
-        "and is not measured here.",
+        "**Real speech, not a test tone.** The harness used to feed a sine-wave",
+        "signal on the grounds that the encoder does identical compute regardless",
+        "of what was said. True of the encoder; not true of the decoder, which is",
+        "autoregressive and whose cost tracks how many tokens come out. The",
+        "synthetic signal decodes to `[Music]`; real speech decodes to a sentence,",
+        "and takes 1.2x as long. `--synthetic` reproduces the old behaviour.",
+        "",
+        "**These are latency numbers, not accuracy numbers.** Word error rate needs",
+        "a real labelled corpus and is measured separately in [ACCURACY.md](ACCURACY.md).",
         "",
     ]
     if notes:
@@ -313,7 +399,25 @@ def main(argv: list[str] | None = None) -> int:
                     help="measure the preferred provider and CPU, for a side-by-side")
     ap.add_argument("--write", action="store_true", help="update docs/BENCHMARKS.md")
     ap.add_argument("--json", type=Path, help="also write raw results here")
+    ap.add_argument(
+        "--audio-file", type=Path, default=REPO_ROOT / "testaudio" / "lecture.wav",
+        help="speech to transcribe (default: the committed lecture clip)",
+    )
+    ap.add_argument(
+        "--synthetic", action="store_true",
+        help="use the old sine-wave signal instead of real speech",
+    )
     args = ap.parse_args(argv)
+
+    if args.synthetic or not args.audio_file.exists():
+        if not args.synthetic:
+            print(f"  {args.audio_file} not found; falling back to the synthetic signal")
+        audio = synth_speech(BENCH_AUDIO_SECONDS)
+        signal = "synthetic sine-wave signal"
+    else:
+        audio = real_speech(BENCH_AUDIO_SECONDS, args.audio_file)
+        signal = f"real speech ({args.audio_file.name})"
+    print(f"  signal: {signal}")
 
     providers: list[str | None] = [args.provider]
     if args.compare:
@@ -323,7 +427,7 @@ def main(argv: list[str] | None = None) -> int:
     devices: list[dict] = []
     for p in providers:
         try:
-            results, device = bench_provider(p, args.runs, args.warmup)
+            results, device = bench_provider(p, args.runs, args.warmup, audio)
         except RuntimeError as exc:
             print(f"\n  !! {exc}")
             return 1
@@ -344,7 +448,7 @@ def main(argv: list[str] | None = None) -> int:
             "farm (`scripts/aihub_profile.py`), for genuine NPU-vs-CPU figures."
         )
 
-    md = render_markdown(all_results, devices, notes)
+    md = render_markdown(all_results, devices, notes, signal)
     if args.write:
         out = REPO_ROOT / "docs" / "BENCHMARKS.md"
         out.parent.mkdir(parents=True, exist_ok=True)

@@ -38,16 +38,18 @@ Nothing leaves the device. There is no account, no API key, and no network call 
 
 This is the part that makes it a Snapdragon application rather than a Python app that happens to run on one — and it is measured, not asserted.
 
-Sahaay runs **two models concurrently and continuously for the length of a lecture**: Whisper transcribing every few seconds, and Llama 3.2 generating glossary entries alongside it. Here is what the second one costs the first, on a CPU:
+Sahaay runs **two models concurrently and continuously for the length of a lecture**: Whisper transcribing every few seconds, and Llama 3.2 generating glossary entries alongside it. Here is what the second one costs the first, on a CPU — Whisper Small, real recorded speech:
 
 | Whisper latency | Mean | p95 | Real-time factor |
 |---|---:|---:|---:|
-| Glossary idle | 343.7 ms | 374.3 ms | 0.043 |
-| **Glossary running** | **2390.7 ms** | 3063.9 ms | **0.299** |
+| Glossary idle | 3275.9 ms | 3422.3 ms | 0.409 |
+| **Glossary running** | **12400.2 ms** | 13241.6 ms | **1.55** |
 
-**Captions get 7× slower.** Not a tuning problem — two compute-bound models on one set of cores, and the captions the user is reading in real time are what loses.
+**On a CPU, the pipeline stops keeping up.** Real-time factor crosses 1.0, which is the line that matters: above it, transcription is slower than the speech arriving, so captions fall further behind the lecturer every minute until they are useless. Not a tuning problem — two compute-bound models on one set of cores.
 
 On a Snapdragon PC the Whisper encoder runs on the Hexagon NPU instead: [13.5 ms on X2 Elite, 129 of 129 layers on the NPU](docs/AIHUB.md). The two models sit on separate silicon and the contention above disappears. Method and full numbers in [docs/CONCURRENCY.md](docs/CONCURRENCY.md).
+
+> **This number was wrong until 22 Sep 2026**, and the way it was wrong is worth knowing. The harness reported RTF 0.043 → 0.299 and concluded the pipeline still kept up. It had measured `whisper_tiny_en` against a synthetic test tone, and recorded neither fact — `model_id` is `auto`, so what gets benchmarked depends on which weights happen to be on the machine. The product resolves to `whisper_small_portable`. Both harnesses now name the model and the signal in their output.
 
 A one-hour lecture, every day, for every student, is also precisely the workload that is absurd to send to the cloud — and precisely what a 45 TOPS NPU sitting idle in a laptop is for.
 
@@ -210,7 +212,7 @@ expected transcript is known in advance, rather than judged by ear.
 | Llama → notes + quiz | structured Topics / Key points, and real Q&A pairs |
 | Full pipeline | audio in → captions → translation → glossary → saved notes |
 | **Accuracy** | **0.0% WER** on English, **14/14 technical terms kept** — [docs/ACCURACY.md](docs/ACCURACY.md) |
-| **Concurrency** | glossary costs captions **7×** on CPU — [docs/CONCURRENCY.md](docs/CONCURRENCY.md) |
+| **Concurrency** | on CPU the glossary pushes captions past real time, RTF **1.55** — [docs/CONCURRENCY.md](docs/CONCURRENCY.md) |
 | Local web server | real models load, EP badge live, WebSocket feed correct |
 
 Example, straight out of the run:
@@ -290,7 +292,7 @@ $ pytest tests/test_offline.py
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File install.ps1 -Dev
-.\.venv\Scripts\python.exe -m pytest        # 257 tests, no weights required
+.\.venv\Scripts\python.exe -m pytest        # 259 tests, no weights required
 ```
 
 ```

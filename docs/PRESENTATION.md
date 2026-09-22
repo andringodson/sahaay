@@ -51,12 +51,15 @@ The one slide that has to land, and it is a measurement, not a claim.
 
 | Whisper latency | Mean | Real-time factor |
 |---|---:|---:|
-| Glossary idle | 344 ms | 0.043 |
-| **Glossary running** | **2391 ms** | **0.299** |
+| Glossary idle | 3276 ms | 0.41 |
+| **Glossary running** | **12400 ms** | **1.55** |
 
-Say it plainly: **turning on the glossary makes captions seven times slower
-on a CPU.** Two compute-bound models, one set of cores, and the thing the
-user is reading in real time is what loses.
+Say it plainly: **on a CPU, turning on the glossary makes the captions stop
+keeping up.** Draw the 1.0 line on the slide. Below it, transcription
+finishes faster than speech arrives. Above it, every minute of lecture takes
+more than a minute to caption, so the captions fall behind and never catch
+up. Two compute-bound models, one set of cores, and the thing the user is
+reading in real time is what loses.
 
 That is the whole argument. The NPU is not a performance nicety here — it is
 what makes the second model possible at all. On Snapdragon the encoder moves
@@ -118,7 +121,7 @@ works.
   datacenter, no audio to capture, and shipping a student's lecture to a
   server would contradict the entire premise ([docs/WEB.md](WEB.md))
 - Degrades on every stage rather than failing; `--mock` runs with nothing downloaded
-- 257 tests, CI on Windows and Linux, no weights or audio device needed
+- 259 tests, CI on Windows (x86 and ARM64) and Linux, no weights or audio device needed
 - Accessibility: resizable captions, `aria-live`, reduced-motion, full keyboard control
 - Privacy: binds to `127.0.0.1`, no telemetry, no accounts, audio never written to disk
 
@@ -132,7 +135,7 @@ works.
 
 ## If you only have time for three slides
 
-Use 2 (the problem), 5 (the 7× concurrency measurement), and 7 (129/129 on
+Use 2 (the problem), 5 (the concurrency measurement), and 7 (129/129 on
 the NPU). Those three carry the whole argument: a real problem, a measured
 reason the NPU is necessary, and independent proof it is being used.
 
@@ -140,8 +143,8 @@ reason the NPU is necessary, and independent proof it is being used.
 
 If a judge gives you one sentence:
 
-> "Turning on the glossary makes captions seven times slower on a CPU. That
-> is why this is a Snapdragon application."
+> "On a CPU, turning on the glossary makes the captions stop keeping up with
+> the lecturer. That is why this is a Snapdragon application."
 
 Everything else — the accuracy table, the term protection, the degradation
 ladder — supports that sentence.

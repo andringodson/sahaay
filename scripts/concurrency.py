@@ -41,6 +41,10 @@ import numpy as np
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+
+from bench import model_name, real_speech  # noqa: E402
+
 from sahaay.config import load_config  # noqa: E402
 
 BENCH_AUDIO_SECONDS = 8.0
@@ -201,6 +205,20 @@ def render_markdown(result: dict) -> str:
         f"  thread, {LLM_TOKENS_PER_CALL} tokens per call - the same shape of load",
         "  `GlossaryWorker` produces during a lecture",
         "- Warm-up runs discarded; the first execution pays graph finalisation",
+        "- The LLM generates *continuously*, which is the worst case:",
+        "  `GlossaryWorker` submits one call per caption, so real load is bursty.",
+        "  Read the idle row as the best case and the loaded row as the worst;",
+        "  a lecture sits between them.",
+        f"- ASR model `{result.get('asr_model') or '?'}`, glossary model "
+        f"`{result.get('llm_model') or '?'}`",
+        f"- Signal: {result.get('signal') or 'unspecified'}",
+        "",
+        "**Which model was measured matters more than it looks.** An earlier",
+        "revision of this file reported RTF 0.043 idle and 0.299 loaded, and",
+        "concluded the pipeline still kept up. That run used `whisper_tiny_en`",
+        "against a synthetic signal, and recorded neither fact. The product",
+        "resolves to `whisper_small_portable`, which is far slower - and on it,",
+        "the loaded figure crosses 1.0 and the conclusion reverses.",
         "",
     ]
     return "\n".join(lines)
@@ -212,6 +230,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--warmup", type=int, default=2)
     ap.add_argument("--write", action="store_true", help="write docs/CONCURRENCY.md")
     ap.add_argument("--json", type=Path)
+    ap.add_argument(
+        "--audio-file", type=Path, default=REPO_ROOT / "testaudio" / "lecture.wav",
+        help="speech to transcribe (default: the committed lecture clip)",
+    )
+    ap.add_argument(
+        "--synthetic", action="store_true",
+        help="use the old sine-wave signal instead of real speech",
+    )
     args = ap.parse_args(argv)
 
     from sahaay.asr import create_asr
@@ -238,7 +264,15 @@ def main(argv: list[str] | None = None) -> int:
         print("  python scripts/download_models.py --llm\n")
         return 1
 
-    audio = synth_speech(BENCH_AUDIO_SECONDS)
+    if args.synthetic or not args.audio_file.exists():
+        audio = synth_speech(BENCH_AUDIO_SECONDS)
+        signal = "synthetic sine-wave signal"
+    else:
+        audio = real_speech(BENCH_AUDIO_SECONDS, args.audio_file)
+        signal = f"real speech ({args.audio_file.name})"
+    print(f"  signal: {signal}")
+    print(f"  asr model: {model_name(asr)}")
+    print(f"  llm model: {model_name(llm)}")
 
     print("  warming up...")
     for _ in range(args.warmup):
@@ -264,6 +298,9 @@ def main(argv: list[str] | None = None) -> int:
         "generated": dt.datetime.now().isoformat(),
         "device": device.to_dict(),
         "audio_seconds": BENCH_AUDIO_SECONDS,
+        "signal": signal,
+        "asr_model": model_name(asr),
+        "llm_model": model_name(llm),
         "asr_alone": summarise(alone),
         "asr_with_llm": summarise(loaded),
         "slowdown": round(mean_loaded / mean_alone, 2) if mean_alone else 0.0,

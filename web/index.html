@@ -6,7 +6,7 @@
 <title>Sahaay — offline lecture captioning for Snapdragon PCs</title>
 <meta name="description" content="Live lecture captions, Indian-language translation and a jargon glossary, running entirely on a Snapdragon PC. No audio leaves the device.">
 <meta property="og:title" content="Sahaay — offline lecture captioning for Snapdragon PCs">
-<meta property="og:description" content="Whisper, NLLB and Llama running side by side on-device. The glossary costs captions 7× on a CPU — which is the argument for the NPU.">
+<meta property="og:description" content="Whisper, NLLB and Llama running side by side on-device. On a CPU the glossary pushes captions past real time — which is the argument for the NPU.">
 <meta property="og:type" content="website">
 <link rel="stylesheet" href="static/site.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎧</text></svg>">
@@ -66,8 +66,8 @@
   <section class="feature">
     <h2>Why this needs an NPU</h2>
     <p class="claim">
-      Turning on the glossary makes captions <strong>seven times slower</strong>
-      on a CPU.
+      Turn the glossary on, and a CPU <strong>stops keeping up with the
+      lecturer</strong>.
     </p>
     <p>
       This is the measurement the project is built around. Sahaay runs Whisper
@@ -77,21 +77,32 @@
     </p>
 
     <table>
-      <caption>Whisper latency on the same clip, with and without the glossary model running. CPU, x86.</caption>
+      <caption>Whisper Small on real recorded speech, with and without the glossary model running. CPU, x86.</caption>
       <thead>
         <tr><th>Whisper latency</th><th>Mean</th><th>p95</th><th>Real-time factor</th></tr>
       </thead>
       <tbody>
-        <tr><td>Glossary idle</td><td>343.7 ms</td><td>374.3 ms</td><td>0.043</td></tr>
-        <tr class="bad"><td>Glossary generating</td><td><strong>2390.7 ms</strong></td><td>3063.9 ms</td><td><strong>0.299</strong></td></tr>
+        <tr><td>Glossary idle</td><td>3275.9 ms</td><td>3422.3 ms</td><td>0.409</td></tr>
+        <tr class="bad"><td>Glossary generating</td><td><strong>12400.2 ms</strong></td><td>13241.6 ms</td><td><strong>1.55</strong></td></tr>
       </tbody>
     </table>
 
     <p>
-      A 6.96× slowdown is not a tuning problem — it is two compute-bound models
-      on one processor. Moving the Whisper encoder onto the Hexagon NPU removes
+      <strong>1.0 is the line that matters.</strong> Below it, transcription
+      finishes faster than speech arrives. Above it, every minute of lecture
+      takes more than a minute to caption, so the captions fall further behind
+      and never recover. Moving the Whisper encoder onto the Hexagon NPU removes
       exactly this contention, and it is why the application belongs on a
       Snapdragon PC rather than anywhere else.
+    </p>
+    <p class="caveat">
+      <strong>This number was wrong until 22 Sep 2026.</strong> The harness
+      reported 0.043 → 0.299 and concluded the pipeline still kept up. It had
+      measured <code>whisper_tiny_en</code> against a synthetic test tone and
+      recorded neither fact — the model id is <code>auto</code>, so what gets
+      benchmarked depends on which weights happen to be on the machine. The
+      product resolves to <code>whisper_small_portable</code>. Both harnesses
+      now print the model and the signal beside every number.
     </p>
     <p class="src"><a href="https://github.com/andringodson/sahaay/blob/main/docs/CONCURRENCY.md">Method and full results →</a></p>
   </section>
@@ -193,7 +204,7 @@
       <div class="stat"><b>+0.01 MB</b><span>memory growth per simulated minute, over 60</span></div>
       <div class="stat"><b>4 → 4</b><span>threads, start to finish — nothing leaks</span></div>
       <div class="stat"><b>0</b><span>segment-queue backlog at the end</span></div>
-      <div class="stat"><b>257</b><span>tests, green on Windows and Linux</span></div>
+      <div class="stat"><b>259</b><span>tests, green on x86, ARM64 and Linux</span></div>
     </div>
     <p>
       Every other test in the repo runs for seconds. The failure modes of an
@@ -241,7 +252,9 @@ cd sahaay
         <strong>The full three-model pipeline has never run on physical
         Snapdragon hardware.</strong> Individual graphs have, on Qualcomm's
         device farm, at 129/129 layers on the NPU. The end-to-end run on one
-        machine has not.
+        machine has not. The suite does now run on <em>ARM64 Windows</em> in
+        CI, which is the same instruction set but Microsoft silicon with no
+        Hexagon — it proves the install path, not the NPU.
       </li>
       <li>
         <strong>Word error rate is measured against synthesised speech</strong>,
@@ -249,8 +262,8 @@ cd sahaay
       </li>
       <li>
         <strong>The NPU column of the concurrency table is empty.</strong> The
-        7× slowdown is the CPU half of the comparison; the half that closes the
-        argument needs a Snapdragon PC and one command.
+        measurement above is the CPU half of the comparison; the half that
+        closes the argument needs a Snapdragon PC and one command.
       </li>
     </ul>
   </section>
