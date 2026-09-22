@@ -1,36 +1,36 @@
-<section id="architecture" style="background:#F6F8FB; color:#131920; font-family:'IBM Plex Sans', Verdana, sans-serif; display:flex; flex-direction:column; padding:128px 128px 160px; gap:40px">
-  <h2 style="font-family:'Rubik', Verdana, sans-serif; font-size:72px; font-weight:600; line-height:1.15">How it fits together</h2>
-  <div style="display:flex; gap:20px; align-items:stretch">
-    <div style="flex:1; background:#FFFFFF; border:1px solid #D7DFE8; border-radius:16px; padding:32px; display:flex; flex-direction:column; gap:12px">
-      <p style="font-size:24px; color:#5A6775; letter-spacing:1px">CPU</p>
-      <h3 style="font-family:'Rubik', Verdana, sans-serif; font-size:32px; font-weight:600; line-height:1.2">Loopback capture</h3>
-      <p style="font-size:26px; line-height:1.45; color:#5A6775">Whatever is playing. No virtual cable.</p>
+<section id="architecture" style="background:#F7F9FC; color:#0F1720; font-family:'IBM Plex Sans', Verdana, sans-serif; display:flex; flex-direction:column; padding:128px 128px 160px; gap:36px">
+  <p style="font-size:24px; color:#0B6FB8; letter-spacing:3px; text-transform:uppercase; font-weight:600">Architecture</p>
+  <h2 style="font-family:'Rubik', Verdana, sans-serif; font-size:64px; font-weight:600; line-height:1.1; letter-spacing:-1px">How it fits together</h2>
+  <div style="display:flex; gap:18px; align-items:stretch">
+    <div style="flex:1; background:#FFFFFF; border:1px solid #DCE3EC; border-radius:18px; padding:30px; display:flex; flex-direction:column; gap:14px; box-shadow:0 4px 24px rgba(15,23,32,0.06)">
+      <p style="font-size:24px; color:#56646F; background:#EDF1F6; border-radius:8px; padding:6px 12px; letter-spacing:1px; font-weight:600">CPU</p>
+      <h3 style="font-family:'Rubik', Verdana, sans-serif; font-size:32px; font-weight:600; line-height:1.15">Loopback capture</h3>
+      <p style="font-size:25px; line-height:1.4; color:#56646F">Whatever is playing. No virtual cable, no driver.</p>
     </div>
-    <div style="flex:1; background:#FFFFFF; border:1px solid #D7DFE8; border-radius:16px; padding:32px; display:flex; flex-direction:column; gap:12px">
-      <p style="font-size:24px; color:#5A6775; letter-spacing:1px">CPU</p>
-      <h3 style="font-family:'Rubik', Verdana, sans-serif; font-size:32px; font-weight:600; line-height:1.2">Silero VAD</h3>
-      <p style="font-size:26px; line-height:1.45; color:#5A6775">Splits on pauses, so captions break where sentences do.</p>
+    <div style="flex:1; background:#FFFFFF; border:1px solid #DCE3EC; border-radius:18px; padding:30px; display:flex; flex-direction:column; gap:14px; box-shadow:0 4px 24px rgba(15,23,32,0.06)">
+      <p style="font-size:24px; color:#56646F; background:#EDF1F6; border-radius:8px; padding:6px 12px; letter-spacing:1px; font-weight:600">CPU</p>
+      <h3 style="font-family:'Rubik', Verdana, sans-serif; font-size:32px; font-weight:600; line-height:1.15">Silero VAD</h3>
+      <p style="font-size:25px; line-height:1.4; color:#56646F">Splits on pauses, so captions break where sentences do.</p>
     </div>
-    <div style="flex:1; background:#FFFFFF; border:2px solid #00845C; border-radius:16px; padding:32px; display:flex; flex-direction:column; gap:12px">
-      <p style="font-size:24px; color:#00845C; letter-spacing:1px">NPU</p>
-      <h3 style="font-family:'Rubik', Verdana, sans-serif; font-size:32px; font-weight:600; line-height:1.2">Whisper Small</h3>
-      <p style="font-size:26px; line-height:1.45; color:#5A6775">Transcription and language detection.</p>
+    <div style="flex:1; background:#FFFFFF; border:1px solid #DCE3EC; border-radius:18px; padding:30px; display:flex; flex-direction:column; gap:14px; box-shadow:0 4px 24px rgba(15,23,32,0.06)">
+      <p style="font-size:24px; color:#00734F; background:#DFF3EA; border-radius:8px; padding:6px 12px; letter-spacing:1px; font-weight:600">NPU</p>
+      <h3 style="font-family:'Rubik', Verdana, sans-serif; font-size:32px; font-weight:600; line-height:1.15">Whisper Small</h3>
+      <p style="font-size:25px; line-height:1.4; color:#56646F">Transcription and per-segment language detection.</p>
     </div>
-    <div style="flex:1; background:#FFFFFF; border:1px solid #D7DFE8; border-radius:16px; padding:32px; display:flex; flex-direction:column; gap:12px">
-      <p style="font-size:24px; color:#9A6200; letter-spacing:1px">NPU TARGET</p>
-      <h3 style="font-family:'Rubik', Verdana, sans-serif; font-size:32px; font-weight:600; line-height:1.2">NLLB-200</h3>
-      <p style="font-size:26px; line-height:1.45; color:#5A6775">Eight Indian languages, technical terms protected.</p>
+    <div style="flex:1; background:#FFFFFF; border:1px solid #DCE3EC; border-radius:18px; padding:30px; display:flex; flex-direction:column; gap:14px; box-shadow:0 4px 24px rgba(15,23,32,0.06)">
+      <p style="font-size:24px; color:#8A5800; background:#FBF0DC; border-radius:8px; padding:6px 12px; letter-spacing:1px; font-weight:600">NPU TARGET</p>
+      <h3 style="font-family:'Rubik', Verdana, sans-serif; font-size:32px; font-weight:600; line-height:1.15">NLLB-200</h3>
+      <p style="font-size:25px; line-height:1.4; color:#56646F">Eight Indian languages, technical terms protected.</p>
     </div>
-    <div style="flex:1; background:#FFFFFF; border:1px solid #D7DFE8; border-radius:16px; padding:32px; display:flex; flex-direction:column; gap:12px">
-      <p style="font-size:24px; color:#9A6200; letter-spacing:1px">NPU TARGET</p>
-      <h3 style="font-family:'Rubik', Verdana, sans-serif; font-size:32px; font-weight:600; line-height:1.2">Llama 3.2</h3>
-      <p style="font-size:26px; line-height:1.45; color:#5A6775">Glossary live; notes and a self-test at the end.</p>
-    </div>
+    <div style="flex:1; background:#FFFFFF; border:1px solid #DCE3EC; border-radius:18px; padding:30px; display:flex; flex-direction:column; gap:14px; box-shadow:0 4px 24px rgba(15,23,32,0.06)">
+      <p style="font-size:24px; color:#8A5800; background:#FBF0DC; border-radius:8px; padding:6px 12px; letter-spacing:1px; font-weight:600">NPU TARGET</p>
+      <h3 style="font-family:'Rubik', Verdana, sans-serif; font-size:32px; font-weight:600; line-height:1.15">Llama 3.2</h3>
+      <p style="font-size:25px; line-height:1.4; color:#56646F">Glossary live; notes and a self-test at the end.</p>
+    </div></div>
+  <div style="background:#FFFFFF; border-left:8px solid #0B6FB8; border-radius:8px; padding:40px 48px; display:flex; flex-direction:column; gap:12px; box-shadow:0 4px 24px rgba(15,23,32,0.06)">
+    <h3 style="font-family:'Rubik', Verdana, sans-serif; font-size:38px; font-weight:600; line-height:1.18">Three threads, and both queues drop the <i>oldest</i> item under pressure</h3>
+    <p style="font-size:29px; line-height:1.45; color:#56646F">Because a caption four minutes late is worse than no caption at all. Staying near the live edge is the whole job.</p>
   </div>
-  <div style="background:#FFFFFF; border:1px solid #D7DFE8; border-radius:20px; padding:40px; display:flex; flex-direction:column; gap:12px">
-    <h3 style="font-family:'Rubik', Verdana, sans-serif; font-size:40px; font-weight:600; line-height:1.2">Three threads, and both queues drop the <i>oldest</i> item under pressure</h3>
-    <p style="font-size:30px; line-height:1.5; color:#5A6775">Because a caption four minutes late is worse than no caption at all. Staying near the live edge is the whole job.</p>
-  </div>
-  <p style="position:absolute; left:128px; bottom:64px; width:1664px; font-size:24px; color:#5A6775">Architecture &#183; docs/ARCHITECTURE.md</p>
+  <p style="position:absolute; left:128px; bottom:64px; width:1664px; font-size:24px; color:#56646F">Architecture &#183; docs/ARCHITECTURE.md</p>
   <aside>Do not narrate all five boxes. Point at them once, then spend the time on the queue policy - it is the design decision that shows you thought about a live captioner rather than a batch transcriber.</aside>
 </section>

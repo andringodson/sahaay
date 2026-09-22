@@ -1,30 +1,34 @@
-<section id="npu" style="background:#0D1014; color:#E8EDF3; font-family:'IBM Plex Sans', Verdana, sans-serif; display:flex; flex-direction:column; padding:128px 128px 160px; gap:40px">
-  <h2 style="font-family:'Rubik', Verdana, sans-serif; font-size:72px; font-weight:600; line-height:1.15">Why this needs an NPU</h2>
-  <p style="font-size:32px; line-height:1.5; color:#8D9AAB; width:1600px">Sahaay runs two models at once for the length of a lecture: Whisper transcribing, Llama writing glossary entries. On one set of CPU cores they compete, and the captions are what lose.</p>
-  <table style="font-family:'IBM Plex Sans', Verdana, sans-serif; font-size:32px; color:#E8EDF3">
-    <tr>
-      <th style="width:40%; text-align:left; font-size:24px; color:#8D9AAB; font-weight:600; padding:16px">WHISPER LATENCY</th>
-      <th style="width:20%; text-align:right; font-size:24px; color:#8D9AAB; font-weight:600">MEAN</th>
-      <th style="width:20%; text-align:right; font-size:24px; color:#8D9AAB; font-weight:600">P95</th>
-      <th style="width:20%; text-align:right; font-size:24px; color:#8D9AAB; font-weight:600">REAL-TIME FACTOR</th>
-    </tr>
-    <tr>
-      <td style="text-align:left">Glossary idle</td>
-      <td style="text-align:right">3276 ms</td>
-      <td style="text-align:right">3422 ms</td>
-      <td style="text-align:right; color:#00D68F">0.41</td>
-    </tr>
-    <tr>
-      <td style="text-align:left">Glossary running</td>
-      <td style="text-align:right; color:#FF5C5C">12400 ms</td>
-      <td style="text-align:right; color:#FF5C5C">13242 ms</td>
-      <td style="text-align:right; color:#FF5C5C">1.55</td>
-    </tr>
-  </table>
-  <div style="background:#151A21; border:1px solid #262F3A; border-radius:20px; padding:40px; display:flex; flex-direction:column; gap:12px">
-    <h3 style="font-family:'Rubik', Verdana, sans-serif; font-size:44px; font-weight:600; line-height:1.2; color:#4DB8FF">1.0 is the line that matters</h3>
-    <p style="font-size:30px; line-height:1.5; color:#E8EDF3">Below it, transcription finishes faster than speech arrives. Above it, every minute of lecture takes more than a minute to caption &mdash; so the captions fall behind and never catch up.</p>
+<section id="npu" style="background:#0A0E14; color:#E9EFF6; font-family:'IBM Plex Sans', Verdana, sans-serif; display:flex; flex-direction:column; padding:128px 128px 160px; gap:32px">
+  <p style="font-size:24px; color:#5CBFFF; letter-spacing:3px; text-transform:uppercase; font-weight:600">Why this needs an NPU</p>
+  <h2 style="font-family:'Rubik', Verdana, sans-serif; font-size:64px; font-weight:600; line-height:1.1; letter-spacing:-1px">Turn the glossary on, and a CPU stops keeping up</h2>
+  <div style="background:#131B26; border:1px solid rgba(255,255,255,0.12); border-radius:20px; padding:48px">
+    <div style="position:relative; display:flex; flex-direction:column; gap:32px">
+      <div style="position:absolute; left:783px; top:56px; width:3px; height:284px; background:#FFB020"></div>
+      <p style="position:absolute; left:659px; top:0; width:250px; font-size:26px; color:#FFB020; font-weight:600; text-align:center">1.0 &#183; real time</p>
+      <div style="height:44px"></div>
+      
+    <div style="display:flex; flex-direction:column; gap:14px">
+      <div style="display:flex; justify-content:space-between; align-items:baseline">
+        <p style="font-size:30px; color:#E9EFF6">Glossary idle</p>
+        <p style="font-size:34px; color:#2D8FD6; font-weight:600">RTF 0.41 &#183; 3276 ms</p>
+      </div>
+      <div style="height:56px; background:#1B2532; border-radius:4px">
+        <div style="width:321px; height:56px; background:#2D8FD6; border-radius:0 4px 4px 0"></div>
+      </div>
+    </div>
+      
+    <div style="display:flex; flex-direction:column; gap:14px">
+      <div style="display:flex; justify-content:space-between; align-items:baseline">
+        <p style="font-size:30px; color:#E9EFF6">Glossary running</p>
+        <p style="font-size:34px; color:#DE4E36; font-weight:600">RTF 1.55 &#183; 12400 ms</p>
+      </div>
+      <div style="height:56px; background:#1B2532; border-radius:4px">
+        <div style="width:1215px; height:56px; background:#DE4E36; border-radius:0 4px 4px 0"></div>
+      </div>
+    </div>
+    </div>
   </div>
-  <p style="position:absolute; left:128px; bottom:64px; width:1664px; font-size:24px; color:#8D9AAB">Measured on CPU, Whisper Small, real recorded speech &#183; docs/CONCURRENCY.md</p>
-  <aside>This is the one slide that has to land. Say it plainly: on a CPU, turning the glossary on makes the captions stop keeping up. If asked "why not a smaller model?" - because the glossary IS the feature, and a smaller model writes worse explanations. The NPU is how you keep both.</aside>
+  <p style="font-size:32px; line-height:1.45; color:#E9EFF6; width:1600px">Below the line, transcription finishes faster than speech arrives. Above it, every minute of lecture takes more than a minute to caption &mdash; so the captions fall behind and never catch up.</p>
+  <p style="position:absolute; left:128px; bottom:64px; width:1664px; font-size:24px; color:#93A3B5">CPU, Whisper Small, real recorded speech &#183; docs/CONCURRENCY.md</p>
+  <aside>This is the one slide that has to land. Point at the orange line and say it plainly: on a CPU, turning the glossary on pushes the captions past real time. If asked "why not a smaller model?" - because the glossary IS the feature, and a smaller model writes worse explanations. The NPU is how you keep both.</aside>
 </section>
