@@ -55,6 +55,46 @@ jobs:
       - name: Tests
         run: python -m pytest tests/ -q
 
+  # The product ships to ARM64 Windows and had never been run on it. That is
+  # the machine a reviewer borrows, and an install that fails there fails on
+  # the day rather than in CI.
+  #
+  # This is NOT a Snapdragon device and proves nothing about the NPU: GitHub's
+  # ARM runners are Azure silicon with no Hexagon. What it does prove is the
+  # part that was actually untested - that the wheels resolve on win-arm64,
+  # that the app imports and reports its provider, and that the suite passes.
+  arm64:
+    name: tests (windows-11-arm, py3.12)
+    runs-on: windows-11-arm
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy pytest tokenizers huggingface-hub
+          pip install fastapi uvicorn httpx websockets
+          pip install onnxruntime
+
+      # The whole point of an ARM64 build. Allowed to fail so a wheel that is
+      # not published yet does not block the suite - but the step output says
+      # plainly whether it installed, which is the thing worth knowing.
+      - name: Install QNN execution provider
+        continue-on-error: true
+        run: pip install onnxruntime-qnn
+
+      - name: Report execution provider
+        run: python -m sahaay --device
+
+      - name: Tests
+        run: python -m pytest tests/ -q
+
   lint:
     runs-on: ubuntu-latest
     steps:
