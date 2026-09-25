@@ -158,6 +158,52 @@ def wanted(spec: ModelSpec, tier: str) -> bool:
     return spec.tier in (tier, "both")
 
 
+def npu_active() -> bool:
+    """Will this machine actually execute on the Hexagon NPU?
+
+    Not the same question as the tier. The tier asks "is this ARM64 Windows";
+    this asks onnxruntime what the QNN provider is bound to, which is what
+    decides which glossary model the app loads.
+    """
+    try:
+        from sahaay.runtime import SessionFactory
+
+        return bool(SessionFactory().npu_active)
+    except Exception:  # noqa: BLE001
+        # No onnxruntime yet, or no QNN. Either way: not the NPU.
+        return False
+
+
+def prefer_one_llm(specs: list[ModelSpec]) -> tuple[list[ModelSpec], str | None]:
+    """Download the glossary model this machine will load, not both.
+
+    The portable tier carries a 3B and a 1B, and `--auto` used to fetch both:
+    5.1 GB of a 6.5 GB download for two models where the app only ever loads
+    one. Which one is not a preference - `sahaay.llm.order_candidates` picks
+    the 3B when the NPU is active and the 1B on CPU, because a glossary entry
+    that arrives after the lecture has ended is not a glossary entry.
+
+    `--all` still gets both.
+    """
+    llms = [s for s in specs if s.key == "llm"]
+    if len(llms) < 2:
+        return specs, None
+
+    on_npu = npu_active()
+    keep = "llama_3_2_3b_instruct_genai" if on_npu else "llama_3_2_1b_instruct_genai"
+    dropped = [s for s in llms if s.target_dir != keep]
+    if not dropped:
+        return specs, None
+
+    saved = human(sum(s.approx_mb for s in dropped))
+    why = (
+        f"Hexagon NPU active, so the 3B is what runs; skipping the 1B ({saved})."
+        if on_npu
+        else f"No Hexagon NPU here, so the app loads the 1B on CPU; skipping the 3B ({saved})."
+    )
+    return [s for s in specs if s not in dropped], why + "  Use --all for both."
+
+
 def human(mb: int) -> str:
     return f"{mb / 1024:.1f} GB" if mb >= 1024 else f"{mb} MB"
 
@@ -218,14 +264,19 @@ def main(argv: list[str] | None = None) -> int:
     tier = args.tier or ("portable" if args.all else detect_tier())
 
     specs = [s for s in MODELS if (not keys or s.key in keys)]
+    note = None
     if not args.all:
         specs = [s for s in specs if wanted(s, tier)]
+        specs, note = prefer_one_llm(specs)
 
     if not specs:
         print("Nothing selected. Try --auto, or --list to see the options.")
         return 1
 
     show_plan(specs, "all" if args.all else tier)
+    if note:
+        print(f"  {note}")
+        print()
     if args.list:
         return 0
 

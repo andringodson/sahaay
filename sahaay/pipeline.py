@@ -118,7 +118,43 @@ class Pipeline:
             llm, self.cfg.glossary, self.cfg.translate.target_language, on_gloss=self._on_gloss
         )
         self._notes_writer = NotesWriter(llm, self.cfg.notes, self.cfg.sessions_dir)
+
+        self.bus.publish(ev.STATUS, stage="warming", **self.status())
+        self._warm_up()
+
         self.bus.publish(ev.STATUS, stage="ready", **self.status())
+
+    def _warm_up(self) -> None:
+        """Run one throwaway inference per stage before the lecture starts.
+
+        Creating a session is not the same as executing one. The first run
+        finalises the graph, and on the Hexagon NPU that costs seconds - the
+        benchmark harness discards warm-up runs for exactly this reason. Left
+        unpaid here, a student presses Start and the bill lands on their first
+        sentence, which is the one moment the app cannot afford to be slow.
+
+        Failures are ignored on purpose: a warm-up that cannot run is not a
+        reason to refuse to start, and whatever broke will surface with a real
+        error on the first real segment.
+        """
+        import numpy as np
+
+        started = time.monotonic()
+        quiet = np.zeros(int(self.cfg.audio.sample_rate * 1.0), dtype=np.float32)
+
+        try:
+            if self._asr is not None:
+                self._asr.transcribe(quiet)
+        except Exception as exc:  # noqa: BLE001
+            log.debug("ASR warm-up skipped: %s", exc)
+
+        try:
+            if self._translator is not None:
+                self._translator.translate("warm up", self.cfg.translate.target_language)
+        except Exception as exc:  # noqa: BLE001
+            log.debug("translator warm-up skipped: %s", exc)
+
+        log.info("warm-up took %.1fs", time.monotonic() - started)
 
     def start(self) -> None:
         if self._running:

@@ -259,12 +259,25 @@ function fmtTime(seconds) {
 
 /* ---------- control ---------- */
 
+const IDLE_HINT = $("empty") ? $("empty").innerHTML : "";
+
 function setRunning(running) {
   state.running = running;
   const btn = $("toggle");
   btn.textContent = running ? "Stop" : "Start";
   btn.classList.toggle("recording", running);
   btn.disabled = false;
+
+  // A caption only lands once the speaker pauses, so the first one takes a
+  // few seconds however fast the models are. Saying so is the difference
+  // between "it is working" and "it is broken".
+  const empty = $("empty");
+  if (empty && !state.captions.size) {
+    empty.innerHTML = running
+      ? "Listening… the first caption appears when the speaker pauses. " +
+        "Watch the level meter in the header: if it is moving, sound is reaching the app."
+      : IDLE_HINT;
+  }
 }
 
 $("toggle").onclick = async () => {
@@ -333,6 +346,10 @@ function onStatus(msg) {
     $("toggle").disabled = true;
     $("toggle").textContent = "Loading…";
     toast(`Loading ${msg.detail || "models"}…`);
+  } else if (msg.stage === "warming") {
+    $("toggle").disabled = true;
+    $("toggle").textContent = "Warming up…";
+    toast("Warming the models up so your first caption is not the slow one…");
   } else if (msg.stage === "ready") {
     $("toggle").disabled = false;
     $("toggle").textContent = state.running ? "Stop" : "Start";
