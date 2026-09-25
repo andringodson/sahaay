@@ -84,12 +84,20 @@
       back to when no language model is installed — exported from the same
       source file, so the two cannot drift.
     </p>
+    <p>
+      <strong>Watch the RTF badge while it runs.</strong> On most machines it
+      will sit <em>above</em> 1.0 — WebAssembly on a laptop CPU transcribes
+      slower than people speak, so the captions arrive late and keep slipping.
+      That is not a bug in the demo. It is the measurement below, happening to
+      you, in the browser, which is the whole reason this belongs on a
+      Snapdragon PC.
+    </p>
     <p class="caveat">
-      <strong>What the browser build is not.</strong> There is no Hexagon NPU in
-      a browser, so it cannot show the measurement this whole project is about.
-      It uses Whisper Base rather than Small, captures a tab rather than all
-      system audio, and does not translate — NLLB-200 is 650 MB, which is not
-      something to push down a phone connection. Those three need
+      <strong>What the browser build is not.</strong> It uses Whisper Base
+      rather than Small, captures one shared tab rather than all system audio,
+      and does not translate — NLLB-200 is 650 MB, which is not something to
+      push down a phone connection. And there is no Hexagon NPU in a browser,
+      so it can show you the problem but not the fix. Those need
       <a href="https://github.com/andringodson/sahaay">the desktop build</a>.
     </p>
   </section>

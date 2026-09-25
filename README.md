@@ -59,6 +59,13 @@ A one-hour lecture, every day, for every student, is also precisely the workload
 
 ## Try it in 30 seconds
 
+**No install at all:** [sahaay-offline.vercel.app/live](https://sahaay-offline.vercel.app/live/)
+downloads Whisper once and runs it in your own browser — speak, or share a tab
+playing a lecture. Your audio never leaves the tab. Watch the RTF badge: on a
+laptop CPU it sits above 1.0, which is the measurement this project is about,
+happening to you. Captions and the jargon sidebar only; the NPU, system-audio
+capture and Indian-language translation need the desktop build below.
+
 No models, no audio device, no Snapdragon hardware:
 
 ```powershell
