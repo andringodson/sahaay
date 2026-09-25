@@ -218,7 +218,7 @@ slide("demo", f"""
     <img src="{SHOT}" alt="The Sahaay interface: English captions with Hindi translations beneath each line, and a jargon sidebar explaining eigenvector and eigenvalue" style="width:1008px; height:630px; object-fit:contain; border:1px solid {LINE_D}; border-radius:16px; box-shadow:0 12px 48px rgba(0,0,0,0.45)">
   </div>
   {footer('Live demo &#183; fallback replay at sahaay-offline.vercel.app/demo', ON_D_DIM)}
-  <aside>Turn the Wi-Fi off on camera. It is the strongest fifteen seconds you have - do not cut it, and do not explain it first. If the live demo misbehaves, the recorded replay at sahaay-offline.vercel.app/demo is the same interface running the same events.</aside>
+  <aside>Turn the Wi-Fi off on camera. It is the strongest fifteen seconds you have - do not cut it, and do not explain it first. Two fallbacks if the machine misbehaves: sahaay-offline.vercel.app/live runs Whisper in the browser on any laptop in the room, and /demo replays a recorded session in the same interface.</aside>
 </section>
 """)
 
@@ -354,14 +354,14 @@ slide("deployment", f"""
       <p style="font-size:29px; line-height:1.45; color:{ON_L_DIM}">Resizable captions, live regions, reduced motion, full keyboard control. Binds to 127.0.0.1. No telemetry, no account, audio never written to disk.</p>
     </div>
     <div style="flex:1; background:{CARD_L}; border:2px solid {ACCENT_L}; border-radius:20px; padding:40px; display:flex; flex-direction:column; gap:16px; box-shadow:0 4px 24px rgba(15,23,32,0.06)">
-      <h3 style="font-family:{HEAD}; font-size:38px; font-weight:600; line-height:1.18; color:{ACCENT_L}">The app is deliberately not hosted</h3>
-      <p style="font-size:29px; line-height:1.45; color:{ON_L}">There is no NPU in a datacenter and no audio to capture. Shipping a student&rsquo;s lecture to a server to prove it never leaves their machine would be an odd way to make the point.</p>
-      <p style="font-size:29px; line-height:1.45; color:{ON_L_DIM}">What is online is the evidence, and a replay of a real session in the real interface.</p>
-      <p style="font-size:30px; line-height:1.4; color:{ACCENT_L}">sahaay-offline.vercel.app</p>
+      <h3 style="font-family:{HEAD}; font-size:38px; font-weight:600; line-height:1.18; color:{ACCENT_L}">Nothing is hosted. Try it anyway.</h3>
+      <p style="font-size:29px; line-height:1.45; color:{ON_L}">The site runs Whisper in <i>your</i> browser &mdash; static files, your own CPU, audio that never leaves the tab. The same claim the desktop app makes, on hardware you already have.</p>
+      <p style="font-size:29px; line-height:1.45; color:{ON_L_DIM}">Watch the RTF badge climb past 1.0 while it runs. That is this deck&rsquo;s central measurement, happening to you.</p>
+      <p style="font-size:30px; line-height:1.4; color:{ACCENT_L}">sahaay-offline.vercel.app/live</p>
     </div>
   </div>
   {footer('Deployment and accessibility &#183; docs/WEB.md', ON_L_DIM)}
-  <aside>The right-hand card is the one to dwell on. Refusing to host it is a design decision, not a gap, and saying so out loud pre-empts the obvious question.</aside>
+  <aside>The right-hand card is the best invitation in the deck: tell them to open it on their phone now. A judge who watches RTF cross 1.0 on their own device has understood slide five without you saying a word. The pipeline still is not hosted - no NPU, no system audio, no translation - and saying that out loud pre-empts the obvious question.</aside>
 </section>
 """)
 
