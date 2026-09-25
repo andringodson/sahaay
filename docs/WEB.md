@@ -4,8 +4,16 @@
 
 ## What is hosted, and what is not
 
-Sahaay itself is not hosted, and cannot be. That is not a limitation to work
-around — it is the product:
+Three things live at that URL, and they are deliberately different:
+
+| | What runs | Where the inference happens |
+|---|---|---|
+| `/` | the evidence, with its source links | nothing |
+| `/live/` | **Whisper, for real** | your browser, on your machine |
+| `/demo/` | a recording of a desktop session | nothing; it is a replay |
+
+**The desktop pipeline is not hosted, and cannot be.** That is not a
+limitation to work around — it is the product:
 
 - **There is no NPU in a datacenter.** The entire argument of this project is
   that the Hexagon NPU is what makes two models run side by side without the
@@ -13,15 +21,61 @@ around — it is the product:
   demonstrate the opposite.
 - **There is no audio.** Capture is WASAPI loopback — whatever is playing on
   *the user's* speakers. A server has nothing to listen to.
-- **The models are gigabytes.** Whisper, NLLB-200 and Llama 3.2 together are
-  well past any serverless bundle limit, and cold-starting them per request
-  would make live captioning meaningless.
+- **The models are gigabytes.** Whisper Small, NLLB-200 and Llama 3.2 together
+  are well past any serverless bundle limit, and cold-starting them per
+  request would make live captioning meaningless.
 - **Most importantly, it would invert the claim.** Sahaay exists because a
   student's lectures should not leave their machine. Uploading their audio to
   a server to prove that would be an odd way to make the point.
 
-So what is hosted is the **evidence and a replay**: the measured numbers with
-their source links, and the real interface replaying a real session.
+## The browser build
+
+`/live/` resolves that tension rather than dodging it. The page is static
+files; **Whisper is fetched once from a CDN and executed in the visitor's own
+browser** — WebGPU where the browser has an adapter, WebAssembly where it does
+not. The audio never leaves the tab. That is the same claim the desktop app
+makes, on hardware every visitor already has, which is why it belongs on a
+public URL while the pipeline itself does not.
+
+`web/static/live.js` swaps the transport and nothing else, exactly as
+`replay.js` does: `app.js` — the product's own UI — boots, asks for
+`/api/status`, opens a socket, and renders what arrives. What arrives is
+produced by real inference a few centimetres away.
+
+The jargon sidebar uses the same seeded vocabulary the desktop app falls back
+to when no language model is installed. `build_web.py` exports it to
+`web/static/glossary.json` from `sahaay.llm.SEED_GLOSSARY`, and a test asserts
+the two match, so they cannot drift.
+
+**What it is not.** Whisper Base rather than Small; a shared browser tab
+rather than all system audio; no translation, because NLLB-200 is 650 MB and
+that is not something to push down a phone connection; and no NPU, so it
+cannot show the measurement the project is actually about. The page says all
+of this in its own banner rather than letting a visitor infer otherwise.
+
+### Two things a real browser found
+
+Neither was visible to the test suite, and both were found by
+`scripts/check_live.py`, which drives the page in Chromium with its fake
+capture device fed from `testaudio/lecture_long.wav`.
+
+**The WebGPU probe.** The first version tried `pipeline(..., device: "webgpu")`
+inside a `try`, and fell back to WASM in the `catch`. `navigator.gpu` exists in
+plenty of browsers that then fail to return an adapter — headless Chromium is
+one — and by the time that surfaced the runtime had already fixed its backend
+list, so the fallback asked for WASM and was told *"no available backend found
+ERR: [webgpu]"*. The page loaded perfectly and never captioned. Asking
+`requestAdapter()` first makes it one decision, made correctly.
+
+**Capture on the wrong thread.** Whisper runs as WebAssembly on the main
+thread and blocks it for seconds. A `ScriptProcessorNode` delivers its
+callbacks on that same thread, so while one segment was being transcribed the
+next was not being recorded — measured as whole sentences missing. Moving
+capture into an `AudioWorkletProcessor`, which runs on the audio thread,
+recovered them: the same clip went from two captions with the second sentence
+lost and no glossary entries, to two captions in order with both terms
+explained. Under load the captions now arrive late rather than the audio
+disappearing, which is the same trade the desktop pipeline makes.
 
 ## How the demo works
 
@@ -85,8 +139,11 @@ Static files, no build step, no serverless functions:
 vercel --prod
 ```
 
-`vercel.json` sets `outputDirectory: web` and a content-security policy that
-forbids the page from talking to anything but itself. `.vercelignore` keeps
+`vercel.json` sets `outputDirectory: web` and a content-security policy. It
+is no longer a flat deny: `/live/` has to reach jsdelivr for the runtime and
+huggingface.co for the weights, and needs `wasm-unsafe-eval` to compile
+them. Everything else stays shut, and `connect-src` still forbids the page
+from posting anywhere. `.vercelignore` keeps
 `models/` — over a gigabyte — out of the upload.
 
 The project is connected to the GitHub repository, so a push to `main`

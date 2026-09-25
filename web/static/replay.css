@@ -26,3 +26,40 @@
   .replay-long { display: none; }
   .replay-controls { display: none; }
 }
+
+/* The live page reports what it is doing - downloading the model, listening,
+   transcribing - because the first run fetches tens of megabytes and silence
+   during that is indistinguishable from a broken page. */
+#live-status { color: var(--accent); }
+.live-banner { background: var(--accent-dim); }
+
+/* Source picker, injected by live.js next to the language select. */
+.live-source {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+.live-source select {
+  font: inherit;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+}
+.live-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-2);
+  overflow: hidden;
+  margin-top: 0.4rem;
+}
+.live-progress span {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  transition: width 0.2s linear;
+}

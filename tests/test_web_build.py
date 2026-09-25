@@ -9,6 +9,7 @@ make that a CI failure instead of a stale website.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -101,3 +102,53 @@ def test_recording_carries_no_local_paths(path: Path):
     raw = path.read_text(encoding="utf-8")
     for leak in ("C:\\\\Users", "/home/", "/Users/"):
         assert leak not in raw, f"{path.name} leaks a local path ({leak})"
+
+
+class TestLiveBuild:
+    """The browser build is the product's UI with inference underneath.
+
+    It has the same drift risk as the replay page and one extra: the seeded
+    glossary is exported to JSON, and a change to SEED_GLOSSARY that is not
+    re-exported leaves the site explaining a vocabulary the app no longer has.
+    """
+
+    def test_the_live_page_exists_and_loads_its_own_transport(self):
+        html = (WEB / "live" / "index.html").read_text(encoding="utf-8")
+        assert "live.js" in html
+        assert html.index("live.js") < html.index("app.js"), (
+            "live.js installs the fetch and WebSocket stubs app.js reaches for "
+            "on boot; loading it second means app.js talks to a server that is "
+            "not there."
+        )
+
+    def test_the_live_page_is_the_products_own_ui(self):
+        live = (WEB / "live" / "index.html").read_text(encoding="utf-8")
+        for element in ('id="captions"', 'id="glossary"', 'id="toggle"', 'id="level"'):
+            assert element in live, f"{element} missing - the UI was reimplemented"
+
+    def test_the_exported_glossary_matches_the_python_one(self):
+        from sahaay.llm import SEED_GLOSSARY
+
+        shipped = json.loads((WEB / "static" / "glossary.json").read_text(encoding="utf-8"))
+        assert shipped == SEED_GLOSSARY, (
+            "web/static/glossary.json is stale; run python scripts/build_web.py"
+        )
+
+    def test_the_live_page_says_what_it_cannot_do(self):
+        """It runs Whisper, not the pipeline. The page has to say so."""
+        landing = (WEB / "index.html").read_text(encoding="utf-8")
+        assert "not" in landing and "NPU" in landing
+        assert "translate" in landing.lower() or "translation" in landing.lower()
+
+    def test_live_js_pins_its_runtime(self):
+        """A floating major version can break a page mid-presentation."""
+        js = (WEB / "static" / "live.js").read_text(encoding="utf-8")
+        assert re.search(r"transformers@\d+\.\d+\.\d+", js), (
+            "pin the transformers.js version rather than tracking latest"
+        )
+
+    def test_live_js_never_uploads_audio(self):
+        """The whole claim. Nothing may POST audio anywhere."""
+        js = (WEB / "static" / "live.js").read_text(encoding="utf-8")
+        for pattern in ("FormData", "uploadAudio", "audio/wav"):
+            assert pattern not in js, f"live.js references {pattern}"

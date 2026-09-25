@@ -30,14 +30,17 @@
     </p>
 
     <div class="cta">
-      <a class="btn btn-primary" href="demo/?play=1">Watch a recorded session</a>
+      <a class="btn btn-primary" href="live/">Try it in your browser</a>
+      <a class="btn" href="demo/?play=1">Watch a recorded session</a>
       <a class="btn" href="https://github.com/andringodson/sahaay">Source on GitHub</a>
     </div>
 
     <p class="note">
       Built for the Snapdragon<sup>®</sup> AI Lab Build &amp; Present Challenge 2026.
-      This page is documentation and a replay — <strong>the product itself only
-      runs locally</strong>, which is the whole point of it.
+      The browser version downloads Whisper once and runs it <strong>on your own
+      machine</strong> — no audio leaves the tab, which is the same claim the
+      desktop app makes. The NPU, system-audio capture and Indian-language
+      translation need the desktop build.
     </p>
   </div>
 </header>
@@ -59,6 +62,35 @@
       Cloud captioning can do this. It also requires bandwidth the student may
       not have, and it means every lecture they attend leaves their machine.
       Sahaay does it locally instead: three models, one laptop, no network.
+    </p>
+  </section>
+
+  <!-- ---------------------------------------------------------------- -->
+  <section class="feature">
+    <h2>Try it without installing anything</h2>
+    <p class="claim">
+      <a href="live/">The browser build</a> downloads Whisper once and runs it
+      <strong>on your machine</strong>, in the tab. Your audio never leaves it.
+    </p>
+    <p>
+      That is not a compromise on the argument — it <em>is</em> the argument, on
+      hardware you already have. The page is static files; the inference happens
+      on your own GPU via WebGPU, or your own CPU via WebAssembly, and the badge
+      in the header names which. Speak into your microphone, or share a browser
+      tab playing a lecture and it will caption that instead.
+    </p>
+    <p>
+      Jargon is explained by the same seeded vocabulary the desktop app falls
+      back to when no language model is installed — exported from the same
+      source file, so the two cannot drift.
+    </p>
+    <p class="caveat">
+      <strong>What the browser build is not.</strong> There is no Hexagon NPU in
+      a browser, so it cannot show the measurement this whole project is about.
+      It uses Whisper Base rather than Small, captures a tab rather than all
+      system audio, and does not translate — NLLB-200 is 650 MB, which is not
+      something to push down a phone connection. Those three need
+      <a href="https://github.com/andringodson/sahaay">the desktop build</a>.
     </p>
   </section>
 
@@ -273,6 +305,7 @@ cd sahaay
 <footer class="wrap">
   <p>
     <a href="https://github.com/andringodson/sahaay">GitHub</a> ·
+    <a href="live/">Live in your browser</a> ·
     <a href="demo/?play=1">Recorded session</a> ·
     <a href="https://github.com/andringodson/sahaay/blob/main/docs/ARCHITECTURE.md">Architecture</a> ·
     <a href="https://github.com/andringodson/sahaay/blob/main/docs/BENCHMARKS.md">Benchmarks</a> ·

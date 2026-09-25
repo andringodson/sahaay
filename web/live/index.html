@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sahaay — live in your browser</title>
+<link rel="stylesheet" href="../static/style.css">
+<link rel="stylesheet" href="../static/replay.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎧</text></svg>">
+</head>
+<body>
+
+<div class="replay-banner live-banner">
+  <strong>Running in your browser.</strong>
+  Whisper is downloaded once and executed on <em>your</em> machine &mdash;
+  the page is static files, and no audio ever leaves the tab.
+  <span class="replay-long">That is the same claim the desktop app makes;
+  this is the version you can try without installing anything.</span>
+  <span id="live-status"></span>
+  <a href="../">How it works &rarr;</a>
+</div>
+
+<header class="bar">
+  <div class="brand">
+    <span class="logo" aria-hidden="true">◑</span>
+    <div>
+      <h1>Sahaay</h1>
+      <p class="tag">Offline lecture companion</p>
+    </div>
+  </div>
+
+  <div class="bar-right">
+    <!-- The EP badge is the whole Snapdragon story in one element: it says
+         what silicon the models are actually on, live. -->
+    <!-- Input level. Every other signal in this UI is downstream of a
+         caption, so a silent capture device looks exactly like a quiet
+         lecturer. This moves whenever sound reaches the app. -->
+    <div id="level" class="level" title="Input level" aria-hidden="true">
+      <span id="level-fill" class="level-fill"></span>
+    </div>
+
+    <div id="device" class="badge badge-muted" title="Execution provider in use">
+      <span class="dot"></span><span id="device-label">connecting…</span>
+    </div>
+
+    <label class="field">
+      <span class="sr-only">Caption language</span>
+      <select id="language" aria-label="Translate captions into"></select>
+    </label>
+
+    <button id="toggle" class="btn btn-primary" disabled>Start</button>
+  </div>
+</header>
+
+<main>
+  <section class="live" aria-label="Live captions">
+    <div class="live-head">
+      <h2>Live captions</h2>
+      <div class="live-meta">
+        <span id="rtf" class="pill" title="Real-time factor: below 1.0 means we keep up with live speech">RTF —</span>
+        <span id="count" class="pill">0 lines</span>
+        <div class="text-size" role="group" aria-label="Caption text size">
+          <button id="smaller" class="btn btn-icon" title="Smaller captions">A−</button>
+          <button id="bigger" class="btn btn-icon" title="Larger captions">A+</button>
+        </div>
+      </div>
+    </div>
+
+    <ol id="captions" class="captions" aria-live="polite" aria-atomic="false"></ol>
+
+    <p id="empty" class="empty">
+      Press <kbd>Start</kbd> and play a lecture. Everything — speech recognition,
+      translation and the glossary — runs on this device. No audio leaves it.
+    </p>
+  </section>
+
+  <aside class="side" aria-label="Glossary and session">
+    <div class="side-head">
+      <h2>Jargon</h2>
+      <span id="gloss-count" class="pill">0</span>
+    </div>
+    <p class="side-hint">Technical terms explained in your language, as they are spoken.</p>
+    <ul id="glossary" class="glossary"></ul>
+
+    <div class="side-head" style="margin-top:1.5rem">
+      <h2>This device</h2>
+    </div>
+    <dl id="devinfo" class="devinfo"></dl>
+  </aside>
+</main>
+
+<!-- Session notes slide up when a session ends. -->
+<div id="notes" class="sheet" hidden aria-label="Session notes">
+  <div class="sheet-head">
+    <h2 id="notes-title">Session notes</h2>
+    <div>
+      <a id="notes-copy" class="btn" href="#">Copy Markdown</a>
+      <button id="notes-close" class="btn">Close</button>
+    </div>
+  </div>
+  <p id="notes-path" class="notes-path"></p>
+  <div id="notes-body" class="notes-body"></div>
+</div>
+
+<div id="toast" class="toast" hidden role="status"></div>
+
+<script src="../static/live.js"></script>
+<script src="../static/app.js"></script>
+</body>
+</html>

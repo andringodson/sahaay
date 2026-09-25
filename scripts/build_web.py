@@ -31,6 +31,7 @@ UI_DIR = REPO_ROOT / "sahaay" / "ui"
 WEB_DIR = REPO_ROOT / "web"
 STATIC_DIR = WEB_DIR / "static"
 DEMO_DIR = WEB_DIR / "demo"
+LIVE_DIR = WEB_DIR / "live"
 
 # Copied verbatim. Anything that needs changing for the web is changed by
 # replay.js at runtime, not by editing these.
@@ -44,6 +45,18 @@ BANNER = """
   that happens on your machine, which is the entire point.
   <span id="replay-origin"></span></span>
   <a href="../">What ran on Snapdragon &rarr;</a>
+</div>
+""".strip()
+
+LIVE_BANNER = """
+<div class="replay-banner live-banner">
+  <strong>Running in your browser.</strong>
+  Whisper is downloaded once and executed on <em>your</em> machine &mdash;
+  the page is static files, and no audio ever leaves the tab.
+  <span class="replay-long">That is the same claim the desktop app makes;
+  this is the version you can try without installing anything.</span>
+  <span id="live-status"></span>
+  <a href="../">How it works &rarr;</a>
 </div>
 """.strip()
 
@@ -76,30 +89,70 @@ BANNER_CSS = """
   .replay-long { display: none; }
   .replay-controls { display: none; }
 }
+
+/* The live page reports what it is doing - downloading the model, listening,
+   transcribing - because the first run fetches tens of megabytes and silence
+   during that is indistinguishable from a broken page. */
+#live-status { color: var(--accent); }
+.live-banner { background: var(--accent-dim); }
+
+/* Source picker, injected by live.js next to the language select. */
+.live-source {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+.live-source select {
+  font: inherit;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+}
+.live-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-2);
+  overflow: hidden;
+  margin-top: 0.4rem;
+}
+.live-progress span {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  transition: width 0.2s linear;
+}
 """.strip()
 
 
-def build_demo_html(source: str) -> str:
-    """Rewrite the product's index.html for static hosting."""
+def build_page(source: str, *, script: str, banner: str, title: str) -> str:
+    """Rewrite the product's index.html for one of the hosted pages.
+
+    Both hosted pages are the product's own UI with a different transport
+    underneath: demo/ replays a recording, live/ runs the models in the
+    visitor's own browser. Neither reimplements the interface, so neither
+    can drift from it.
+    """
     out = source
     # The server mounts the UI at /static; on the site it sits one level up.
     out = out.replace('href="/static/', 'href="../static/')
     out = out.replace('src="/static/', 'src="../static/')
 
-    out = out.replace(
-        "<title>Sahaay</title>",
-        "<title>Sahaay — recorded session</title>",
-    )
+    out = out.replace("<title>Sahaay</title>", f"<title>{title}</title>")
 
-    # replay.js must be evaluated before app.js: it installs the fetch and
-    # WebSocket stubs that app.js reaches for the moment it boots.
+    # The transport script must be evaluated before app.js: it installs the
+    # fetch and WebSocket stubs that app.js reaches for the moment it boots.
     out = out.replace(
         '<script src="../static/app.js"></script>',
-        '<script src="../static/replay.js"></script>\n'
+        f'<script src="../static/{script}"></script>\n'
         '<script src="../static/app.js"></script>',
     )
 
-    out = out.replace("<body>", "<body>\n\n" + BANNER, 1)
+    out = out.replace("<body>", "<body>\n\n" + banner, 1)
 
     # A stylesheet of its own rather than appending to the product's, so the
     # verbatim copy stays verbatim and the drift test stays meaningful.
@@ -116,11 +169,29 @@ def expected_files() -> dict[Path, str]:
     files: dict[Path, str] = {}
     for name in VERBATIM:
         files[STATIC_DIR / name] = (UI_DIR / name).read_text(encoding="utf-8")
-    files[DEMO_DIR / "index.html"] = build_demo_html(
-        (UI_DIR / "index.html").read_text(encoding="utf-8")
+    ui = (UI_DIR / "index.html").read_text(encoding="utf-8")
+    files[DEMO_DIR / "index.html"] = build_page(
+        ui, script="replay.js", banner=BANNER, title="Sahaay — recorded session"
+    )
+    files[LIVE_DIR / "index.html"] = build_page(
+        ui, script="live.js", banner=LIVE_BANNER, title="Sahaay — live in your browser"
     )
     files[STATIC_DIR / "replay.css"] = BANNER_CSS + "\n"
+    files[STATIC_DIR / "glossary.json"] = glossary_json()
     return files
+
+
+def glossary_json() -> str:
+    """Ship the seeded glossary to the browser from its one source of truth.
+
+    live/ explains jargon with the same vocabulary the desktop app falls back
+    to when no language model is installed. Exporting it here rather than
+    retyping it into JavaScript means the drift test covers it: change
+    SEED_GLOSSARY and the site is stale until this is re-run.
+    """
+    from sahaay.llm import SEED_GLOSSARY
+
+    return json.dumps(SEED_GLOSSARY, ensure_ascii=False, indent=1, sort_keys=True) + "\n"
 
 
 def sessions_index() -> dict:
