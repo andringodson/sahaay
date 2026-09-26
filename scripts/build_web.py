@@ -35,7 +35,7 @@ LIVE_DIR = WEB_DIR / "live"
 
 # Copied verbatim. Anything that needs changing for the web is changed by
 # replay.js at runtime, not by editing these.
-VERBATIM = ["app.js", "style.css"]
+VERBATIM = ["app.js", "style.css", "matrix.js", "logo.svg"]
 
 BANNER = """
 <div class="replay-banner">
@@ -67,6 +67,7 @@ BANNER_CSS = """
   background: var(--accent-dim);
   color: var(--text);
   font-size: 0.85rem;
+  animation: enter 0.45s var(--ease) both;
   line-height: 1.5;
   border-bottom: 1px solid var(--line);
 }

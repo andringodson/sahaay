@@ -6,7 +6,8 @@
 <title>Sahaay — live in your browser</title>
 <link rel="stylesheet" href="../static/style.css">
 <link rel="stylesheet" href="../static/replay.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎧</text></svg>">
+<link rel="icon" href="../static/logo.svg" type="image/svg+xml">
+<meta name="theme-color" content="#000000">
 </head>
 <body>
 
@@ -22,7 +23,7 @@
 
 <header class="bar">
   <div class="brand">
-    <span class="logo" aria-hidden="true">◑</span>
+    <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect x="1.5" y="1.5" width="61" height="61" rx="16" fill="#050607" stroke="#23272d" stroke-width="3"/><g fill="none" stroke-linecap="round" stroke-width="4.5"><path d="M16 27v10" stroke="#ececec"/><path d="M24 19v26" stroke="#4db8ff"/><path d="M32 24v16" stroke="#ececec"/><path d="M41 26h9" stroke="#ececec" stroke-opacity=".6"/><path d="M41 38h5" stroke="#ececec" stroke-opacity=".6"/></g></svg>
     <div>
       <h1>Sahaay</h1>
       <p class="tag">Offline lecture companion</p>
@@ -104,6 +105,7 @@
 
 <div id="toast" class="toast" hidden role="status"></div>
 
+<script src="../static/matrix.js" defer></script>
 <script src="../static/live.js"></script>
 <script src="../static/app.js"></script>
 </body>

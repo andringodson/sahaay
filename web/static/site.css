@@ -1,41 +1,36 @@
 /* Landing page for the hosted site.
-   Shares the product's palette so the demo does not feel like a different
-   application, but this is a document, not an app: it scrolls, it has a
-   readable measure, and it is light-on-dark for the same reason the UI is. */
+   Shares the product's OLED palette so the demo does not feel like a
+   different application, but this is a document, not an app: it scrolls and
+   it has a readable measure. Every transition here is CSS on transform and
+   opacity, so the compositor runs it and the main thread stays free. */
 
 :root {
-  --bg: #0d1014;
-  --surface: #151a21;
-  --surface-2: #1c232c;
-  --line: #262f3a;
-  --text: #e8edf3;
-  --text-dim: #8d9aab;
+  color-scheme: dark;
+  --bg: #000000;
+  --surface: rgba(9, 10, 12, 0.84);
+  --surface-2: #101215;
+  --line: #1d2025;
+  --line-hi: #2c3139;
+  --text: #ececec;
+  --text-dim: #8b919a;
   --accent: #4db8ff;
-  --accent-dim: #1d4a66;
+  --accent-dim: #07161f;
+  --accent-glow: rgba(77, 184, 255, 0.28);
   --npu: #00d68f;
   --warn: #ffb020;
   --danger: #ff5c5c;
   --radius: 12px;
   --measure: 68ch;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
-/* The product UI follows prefers-color-scheme, so this has to as well -
-   otherwise a visitor on a light desktop gets a dark document and then a
-   light application one click later. Same tokens as sahaay/ui/style.css. */
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: #f6f8fb;
-    --surface: #ffffff;
-    --surface-2: #eef2f7;
-    --line: #d7dfe8;
-    --text: #131920;
-    --text-dim: #5a6775;
-    --accent: #0b6fb8;
-    --accent-dim: #cfe6f7;
-    --npu: #00845c;
-    --warn: #9a6200;
-    --danger: #c62828;
-  }
+.matrix-bg {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
 }
 
 * { box-sizing: border-box; }
@@ -58,7 +53,9 @@ body {
 h1, h2, h3 { line-height: 1.2; letter-spacing: -0.02em; margin: 0; font-weight: 600; }
 h2 { font-size: clamp(1.4rem, 1.1rem + 1vw, 1.9rem); margin-bottom: 0.9rem; }
 p { max-width: var(--measure); }
-a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px;
+    transition: color 0.2s, text-underline-offset 0.2s; }
+a:hover { color: #8fd2ff; text-underline-offset: 5px; }
 em { color: var(--text); font-style: italic; }
 
 code {
@@ -85,24 +82,29 @@ pre code { background: none; border: 0; padding: 0; font-size: 0.9rem; line-heig
 .hero {
   padding: clamp(2.5rem, 1rem + 7vw, 5.5rem) 0 clamp(2rem, 1rem + 4vw, 3.5rem);
   background:
-    radial-gradient(60rem 30rem at 15% -10%, rgba(77, 184, 255, 0.11), transparent 70%),
-    radial-gradient(45rem 26rem at 95% 0%, rgba(0, 214, 143, 0.07), transparent 70%);
+    radial-gradient(60rem 30rem at 15% -10%, rgba(77, 184, 255, 0.07), transparent 70%),
+    radial-gradient(45rem 26rem at 95% 0%, rgba(0, 214, 143, 0.04), transparent 70%);
   border-bottom: 1px solid var(--line);
 }
 
-@media (prefers-color-scheme: light) {
-  .hero {
-    background:
-      radial-gradient(60rem 30rem at 15% -10%, rgba(11, 111, 184, 0.07), transparent 70%),
-      radial-gradient(45rem 26rem at 95% 0%, rgba(0, 132, 92, 0.05), transparent 70%);
-  }
-  .btn-primary { color: #ffffff; }
+/* The hero arrives in order: mark, sentence, buttons, fine print. */
+.hero .wrap > * { animation: enter 0.8s var(--ease) both; }
+.hero .wrap > :nth-child(2) { animation-delay: 0.08s; }
+.hero .wrap > :nth-child(3) { animation-delay: 0.16s; }
+.hero .wrap > :nth-child(4) { animation-delay: 0.24s; }
+
+@keyframes enter {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
 }
 
-.brand { display: flex; align-items: center; gap: 0.85rem; margin-bottom: 1.6rem; }
-.logo { font-size: 2.4rem; color: var(--accent); line-height: 1; }
-.brand h1 { font-size: 2.1rem; }
-.tag { margin: 0.1rem 0 0; color: var(--text-dim); font-size: 0.93rem; }
+.brand { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.8rem; }
+.logo { width: 56px; height: 56px; flex: none; display: block;
+        transition: transform 0.45s var(--ease), filter 0.45s var(--ease); }
+.brand:hover .logo { transform: rotate(-6deg) scale(1.05); filter: drop-shadow(0 0 16px var(--accent-glow)); }
+.brand h1 { font-size: 2.1rem; letter-spacing: -0.01em; }
+.tag { margin: 0.2rem 0 0; color: var(--text-dim); font-size: 0.78rem;
+       letter-spacing: 0.14em; text-transform: uppercase; }
 
 .lede {
   font-size: clamp(1.15rem, 1rem + 0.75vw, 1.5rem);
@@ -124,11 +126,14 @@ pre code { background: none; border: 0; padding: 0; font-size: 0.9rem; line-heig
   font-size: 0.95rem;
   font-weight: 500;
   text-decoration: none;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.2s, background 0.2s, color 0.2s,
+              box-shadow 0.3s var(--ease), transform 0.3s var(--ease);
 }
-.btn:hover { border-color: var(--accent); }
-.btn-primary { background: var(--accent); border-color: var(--accent); color: #06131c; }
-.btn-primary:hover { filter: brightness(1.08); }
+.btn:hover { border-color: var(--accent); color: var(--text); transform: translateY(-2px);
+             box-shadow: 0 8px 24px -10px var(--accent-glow); text-decoration: none; }
+.btn:active { transform: translateY(0) scale(0.98); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #03111a; font-weight: 600; }
+.btn-primary:hover { color: #03111a; box-shadow: 0 10px 30px -8px rgba(77, 184, 255, 0.55); }
 
 .note { color: var(--text-dim); font-size: 0.88rem; max-width: 58ch; margin: 0; }
 .note strong { color: var(--text); font-weight: 500; }
@@ -138,12 +143,24 @@ pre code { background: none; border: 0; padding: 0; font-size: 0.9rem; line-heig
 main { padding: clamp(2rem, 1rem + 4vw, 3.5rem) 0; }
 section { margin-bottom: clamp(2.5rem, 1.5rem + 4vw, 4rem); }
 
+/* Sections rise in as they scroll into view. Scroll-driven, so there is no
+   JavaScript and no observer; a browser without it just shows them. */
+@supports (animation-timeline: view()) {
+  main > section {
+    animation: enter linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 30%;
+  }
+}
+
 .feature {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 16px;
   padding: clamp(1.4rem, 1rem + 2vw, 2.2rem);
+  transition: border-color 0.35s;
 }
+.feature:hover { border-color: var(--line-hi); }
 
 .claim {
   font-size: clamp(1.1rem, 1rem + 0.7vw, 1.35rem);
@@ -183,7 +200,15 @@ caption {
   font-size: 0.85rem;
   padding-bottom: 0.6rem;
 }
-th, td { text-align: left; padding: 0.6rem 0.7rem; border-bottom: 1px solid var(--line); }
+th, td { text-align: left; padding: 0.6rem 0.7rem; border-bottom: 1px solid var(--line); transition: background 0.2s; }
+tbody tr:hover td { background: rgba(77, 184, 255, 0.05); }
+
+/* The device-farm table has five columns and no phone has room for them.
+   Scroll the table, not the page. */
+@media (max-width: 40rem) {
+  table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  th, td { white-space: nowrap; }
+}
 th { color: var(--text-dim); font-weight: 500; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; }
 td:not(:first-child), th:not(:first-child) { text-align: right; }
 table.compact td:not(:first-child), table.compact th:not(:first-child) { text-align: right; }
@@ -213,7 +238,9 @@ tr.good strong { color: var(--npu); }
   grid-template-columns: auto 1fr;
   gap: 0.2rem 0.8rem;
   align-items: baseline;
+  transition: border-color 0.3s, transform 0.3s var(--ease);
 }
+.stage:hover { border-color: var(--line-hi); transform: translateX(4px); }
 .stage strong { font-weight: 600; }
 .stage > span:last-child {
   grid-column: 2;
@@ -256,7 +283,10 @@ tr.good strong { color: var(--npu); }
   border: 1px solid var(--line);
   border-radius: 11px;
   padding: 1rem;
+  transition: border-color 0.3s, transform 0.3s var(--ease), box-shadow 0.3s var(--ease);
 }
+.stat:hover { border-color: rgba(0, 214, 143, 0.4); transform: translateY(-3px);
+              box-shadow: 0 12px 28px -16px rgba(0, 214, 143, 0.45); }
 .stat b {
   display: block;
   font-size: 1.5rem;
@@ -285,6 +315,25 @@ footer {
 footer p { max-width: none; }
 .small { font-size: 0.82rem; margin-bottom: 0; }
 
+.credit {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--text);
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  margin: 0 0 1rem;
+}
+.credit .logo { width: 22px; height: 22px; }
+.credit a { color: var(--text); font-weight: 600; text-decoration: none;
+            background: linear-gradient(var(--accent), var(--accent)) left bottom / 0 1px no-repeat;
+            transition: background-size 0.35s var(--ease), color 0.2s; }
+.credit a:hover { color: var(--accent); background-size: 100% 1px; }
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
 }

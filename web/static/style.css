@@ -1,21 +1,28 @@
 /* Sahaay UI.
-   Dark by default: this sits next to a lecture video for an hour, and a
-   bright panel beside it is genuinely tiring. Caption type is large and
+   OLED black: this sits next to a lecture video for an hour, and a bright
+   panel beside it is genuinely tiring. True #000 also switches the pixels
+   off on an OLED laptop, which is battery over a long lecture. Caption type is large and
    user-resizable because the primary user may be reading rather than
    hearing the lecture. */
 
 :root {
-  --bg: #0d1014;
-  --surface: #151a21;
-  --surface-2: #1c232c;
-  --line: #262f3a;
-  --text: #e8edf3;
-  --text-dim: #8d9aab;
+  color-scheme: dark;
+  --bg: #000000;
+  /* Panels are nearly opaque so the matrix behind reads as texture, never
+     as something competing with a caption. */
+  --surface: rgba(9, 10, 12, 0.86);
+  --surface-2: #101215;
+  --line: #1d2025;
+  --line-hi: #2c3139;
+  --text: #ececec;
+  --text-dim: #8b919a;
   --accent: #4db8ff;
-  --accent-dim: #1d4a66;
+  --accent-dim: #07161f;
+  --accent-glow: rgba(77, 184, 255, 0.28);
   --npu: #00d68f;
   --warn: #ffb020;
   --danger: #ff5c5c;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 
   /* Captions scale with the viewport but stay inside a readable band, and
      --cap-scale is nudged by the A+/A− controls. */
@@ -24,19 +31,6 @@
 
   --radius: 12px;
   --gap: clamp(0.75rem, 0.5rem + 1vw, 1.5rem);
-}
-
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    --bg: #f6f8fb;
-    --surface: #ffffff;
-    --surface-2: #eef2f7;
-    --line: #d7dfe8;
-    --text: #131920;
-    --text-dim: #5a6775;
-    --accent: #0b6fb8;
-    --accent-dim: #cfe6f7;
-  }
 }
 
 * { box-sizing: border-box; }
@@ -65,6 +59,16 @@ body {
 
 h1, h2 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
 
+/* The matrix (matrix.js) sits behind everything and never takes a click. */
+.matrix-bg {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+}
+
 .sr-only {
   position: absolute; width: 1px; height: 1px;
   padding: 0; margin: -1px; overflow: hidden;
@@ -80,14 +84,17 @@ h1, h2 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
   gap: var(--gap);
   flex-wrap: wrap;
   padding: 0.7rem var(--gap);
-  background: var(--surface);
+  background: rgba(0, 0, 0, 0.72);
   border-bottom: 1px solid var(--line);
+  animation: enter 0.5s var(--ease) both;
 }
 
 .brand { display: flex; align-items: center; gap: 0.7rem; }
-.brand h1 { font-size: 1.05rem; }
-.logo { font-size: 1.5rem; color: var(--accent); line-height: 1; }
-.tag { margin: 0; font-size: 0.75rem; color: var(--text-dim); }
+.brand h1 { font-size: 1.05rem; letter-spacing: 0.01em; }
+.logo { width: 34px; height: 34px; flex: none; display: block;
+        transition: transform 0.35s var(--ease), filter 0.35s var(--ease); }
+.brand:hover .logo { transform: rotate(-6deg) scale(1.06); filter: drop-shadow(0 0 10px var(--accent-glow)); }
+.tag { margin: 0; font-size: 0.7rem; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase; }
 
 .bar-right { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
 
@@ -99,6 +106,7 @@ h1, h2 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
   background: var(--surface-2);
   border: 1px solid var(--line);
   white-space: nowrap;
+  transition: color 0.3s, border-color 0.3s, background 0.3s;
 }
 .badge .dot {
   width: 8px; height: 8px; border-radius: 50%;
@@ -106,7 +114,9 @@ h1, h2 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
   flex: none;
 }
 .badge-npu { color: var(--npu); border-color: color-mix(in srgb, var(--npu) 40%, transparent); }
-.badge-npu .dot { background: var(--npu); box-shadow: 0 0 0 3px color-mix(in srgb, var(--npu) 20%, transparent); }
+.badge-npu .dot { background: var(--npu); box-shadow: 0 0 0 3px color-mix(in srgb, var(--npu) 20%, transparent);
+                  animation: breathe 2.4s ease-in-out infinite; }
+@keyframes breathe { 50% { opacity: 0.45; } }
 .badge-cpu { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 35%, transparent); }
 .badge-cpu .dot { background: var(--warn); }
 .badge-muted { color: var(--text-dim); }
@@ -120,12 +130,16 @@ select, .btn {
   border-radius: 8px;
   padding: 0.45rem 0.8rem;
   cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, color 0.2s,
+              box-shadow 0.25s var(--ease), transform 0.2s var(--ease);
 }
 select:focus-visible, .btn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
-.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn:hover:not(:disabled) { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+.btn:active:not(:disabled) { transform: scale(0.97); }
+select:hover { border-color: var(--line-hi); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .btn-primary {
@@ -135,10 +149,27 @@ select:focus-visible, .btn:focus-visible {
   font-weight: 600;
   min-width: 5.5rem;
 }
+.btn-primary:hover:not(:disabled) { box-shadow: 0 0 18px var(--accent-glow); }
 .btn-primary.recording {
   background: var(--danger);
   border-color: var(--danger);
   color: #fff;
+  position: relative;
+}
+/* A ring that pulses outward while recording. Transform and opacity only,
+   so the compositor does it without repainting anything. */
+.btn-primary.recording::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  border: 2px solid var(--danger);
+  animation: pulse 1.8s var(--ease) infinite;
+  pointer-events: none;
+}
+@keyframes pulse {
+  from { opacity: 0.7; transform: scale(1); }
+  to { opacity: 0; transform: scale(1.25, 1.6); }
 }
 .btn-icon { padding: 0.35rem 0.5rem; min-width: 0; }
 
@@ -166,6 +197,16 @@ main {
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+  transition: border-color 0.3s;
+  animation: enter 0.55s var(--ease) both;
+}
+.live { animation-delay: 0.06s; }
+.side { animation-delay: 0.12s; }
+.live:hover, .side:hover { border-color: var(--line-hi); }
+
+@keyframes enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
 }
 
 .live-head, .side-head {
@@ -187,6 +228,7 @@ main {
   background: var(--surface-2);
   border-radius: 6px;
   padding: 0.2rem 0.5rem;
+  transition: color 0.3s;
 }
 .pill.good { color: var(--npu); }
 .pill.bad { color: var(--warn); }
@@ -208,16 +250,26 @@ main {
   margin-bottom: 0.6rem;
   background: var(--surface-2);
   border-left: 3px solid transparent;
-  animation: rise 0.22s ease-out;
+  transition: border-color 0.4s, background 0.4s;
+  animation: rise 0.32s var(--ease);
 }
+.cap:last-child { background: #0c1117; }
 .cap:last-child { border-left-color: var(--accent); }
 
 @keyframes rise {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(12px); }
   to { opacity: 1; transform: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cap { animation: none; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
   .captions { scroll-behavior: auto; }
 }
 
@@ -231,6 +283,8 @@ main {
   color: var(--accent);
   margin: 0.35rem 0 0;
   line-height: 1.5;
+  transition: opacity 0.3s;
+  animation: rise 0.3s var(--ease);
 }
 .cap-foot {
   display: flex; gap: 0.6rem; flex-wrap: wrap;
@@ -240,6 +294,7 @@ main {
   font-variant-numeric: tabular-nums;
 }
 
+.cap-src { transition: opacity 0.25s; }
 .cap-partial { opacity: 0.55; font-style: italic; }
 
 .empty {
@@ -271,7 +326,7 @@ kbd {
 .gloss {
   padding: 0.6rem 0;
   border-bottom: 1px solid var(--line);
-  animation: rise 0.22s ease-out;
+  animation: slide-in 0.35s var(--ease);
 }
 .gloss:last-child { border-bottom: none; }
 .gloss-term {
@@ -302,10 +357,11 @@ kbd {
   background: var(--surface);
   border-top: 1px solid var(--line);
   border-radius: var(--radius) var(--radius) 0 0;
-  box-shadow: 0 -20px 50px rgba(0,0,0,0.45);
+  background: #07080a;
+  box-shadow: 0 -20px 60px rgba(0,0,0,0.8);
   display: flex;
   flex-direction: column;
-  animation: slide 0.25s ease-out;
+  animation: slide 0.38s var(--ease);
   z-index: 20;
 }
 @keyframes slide { from { transform: translateY(100%); } to { transform: none; } }
@@ -343,6 +399,12 @@ kbd {
   font-size: 0.85rem;
   z-index: 30;
   max-width: min(90vw, 44ch);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  animation: toast-in 0.28s var(--ease);
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
 }
 .toast.error { border-color: var(--danger); color: var(--danger); }
 
@@ -365,6 +427,6 @@ kbd {
   width: 0%;
   height: 100%;
   background: var(--npu);
-  transition: width 0.12s linear;
+  transition: width 0.12s linear, background 0.3s;
 }
 .level.silent .level-fill { background: var(--warn); }

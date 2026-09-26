@@ -80,8 +80,27 @@ class TestStyling:
         # invisible caption on an invisible background.
         assert re.search(rf"{re.escape(token)}\s*:", STYLE_CSS), f"{token} used but never defined"
 
-    def test_dark_and_light_are_both_defined(self):
-        assert "prefers-color-scheme: light" in STYLE_CSS
+    def test_theme_is_oled_black(self):
+        # Deliberately dark-only: true black switches OLED pixels off beside
+        # an hour-long lecture. A light override would quietly undo that for
+        # anyone whose OS is in light mode.
+        assert re.search(r"--bg:\s*#000000", STYLE_CSS)
+        assert "color-scheme: dark" in STYLE_CSS
+        assert "prefers-color-scheme: light" not in STYLE_CSS
+
+    def test_background_matrix_is_loaded_and_cannot_take_clicks(self):
+        # It is purely decorative: it must never intercept a click on Start.
+        assert "/static/matrix.js" in INDEX_HTML
+        rule = re.search(r"\.matrix-bg\s*\{[^}]*\}", STYLE_CSS)
+        assert rule and "pointer-events: none" in rule.group(0)
+
+    def test_background_matrix_stops_when_idle(self):
+        # On /live Whisper shares the CPU with this page; an animation loop
+        # that never stops would be taxing the real-time factor for nothing.
+        matrix = (UI / "matrix.js").read_text(encoding="utf-8")
+        assert "prefers-reduced-motion" in matrix
+        assert "document.hidden" in matrix
+        assert "running = false" in matrix
 
     def test_reduced_motion_is_respected(self):
         # The caption list animates on every new line; someone who asked the

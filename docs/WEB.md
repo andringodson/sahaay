@@ -103,6 +103,29 @@ the public demo keeps the bug while claiming to be the application.
 `tests/test_web_build.py` fails if the copies diverge — so a stale site is a
 red CI run rather than something a judge discovers.
 
+## The background, and what it is allowed to cost
+
+Every page sits on OLED black with a field of very dark glyphs behind it
+(`sahaay/ui/matrix.js`, copied to the site like the rest of the UI). It lights
+up around the cursor and sends a ripple from each click or tap.
+
+On `/live/` that canvas shares a browser with Whisper, and the real-time
+factor is the number this project is about, so it runs on a strict budget:
+
+- The dim field is drawn once per resize and blitted; only lit cells are
+  drawn per frame, from a pre-rendered glyph atlas. Measured in headless
+  Chromium at 1440×900: **0.6–0.7 ms per frame** while the cursor moves,
+  under 2 ms at worst.
+- **With nothing moving, the loop stops**: no timer and no
+  `requestAnimationFrame`, so an idle page, and a lecture being captioned
+  while you read, costs nothing. The ambient rain runs only on the landing
+  page (`data-ambient="on"`), at 30 fps, where nothing else needs the CPU.
+- A hidden tab stops it. `prefers-reduced-motion` gets the static field
+  only. Device pixel ratio is capped at 1.5.
+
+`window.SahaayMatrix.stats` reports frame count and draw time, so that is
+measured, not assumed.
+
 ## Rebuilding it
 
 ```powershell

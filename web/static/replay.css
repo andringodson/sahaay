@@ -4,6 +4,7 @@
   background: var(--accent-dim);
   color: var(--text);
   font-size: 0.85rem;
+  animation: enter 0.45s var(--ease) both;
   line-height: 1.5;
   border-bottom: 1px solid var(--line);
 }

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Sahaay">
+  <title>Sahaay</title>
+  <!-- Sound on the left becoming lines of text on the right: what the app does. -->
+  <rect x="1.5" y="1.5" width="61" height="61" rx="16" fill="#050607" stroke="#23272d" stroke-width="3"/>
+  <g fill="none" stroke-linecap="round" stroke-width="4.5">
+    <path d="M16 27v10" stroke="#ececec"/>
+    <path d="M24 19v26" stroke="#4db8ff"/>
+    <path d="M32 24v16" stroke="#ececec"/>
+    <path d="M41 26h9" stroke="#ececec" stroke-opacity=".6"/>
+    <path d="M41 38h5" stroke="#ececec" stroke-opacity=".6"/>
+  </g>
+</svg>

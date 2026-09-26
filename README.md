@@ -1,3 +1,5 @@
+<img src="sahaay/ui/logo.svg" width="72" alt="Sahaay logo">
+
 # Sahaay
 
 **Live lecture captions, Indian-language translation and a jargon glossary — running entirely on a Snapdragon-powered HP PC, with the network off.**
