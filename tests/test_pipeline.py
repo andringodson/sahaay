@@ -161,3 +161,121 @@ class TestPipelineMock:
         p.set_language("ta")
         assert p.cfg.translate.target_language == "ta"
         assert p._glossary.target_language == "ta"
+
+
+def _seg(seconds: float, index: int, start: float, rate: int = 16_000):
+    import numpy as np
+
+    from sahaay.vad import Segment
+
+    return Segment(
+        audio=np.full(int(seconds * rate), 0.1, dtype=np.float32),
+        start_s=start, end_s=start + seconds, index=index,
+    )
+
+
+class TestBacklogMerge:
+    """Behind? Take the queue in one Whisper call rather than one each.
+
+    The encoder runs a fixed 30 s window whatever it is given, so separate
+    calls on short queued sentences pay for 30 s apiece. On CPU the queue
+    backs up as soon as the glossary model runs - the measurement this
+    project is built on - and the old behaviour was to fall further behind
+    until the queue overflowed and dropped sentences.
+    """
+
+    def test_a_queued_backlog_becomes_one_segment(self, cfg):
+        p = Pipeline(cfg)
+        first = _seg(4.0, 0, 0.0)
+        p._segments.put(_seg(3.0, 1, 4.5))
+        p._segments.put(_seg(5.0, 2, 8.0))
+
+        merged, stop = p._merge_backlog(first)
+
+        assert not stop
+        assert merged.index == 0
+        assert merged.start_s == 0.0
+        assert merged.end_s == 13.0, "the merged segment must end where the last one did"
+        # every sample of all three, plus two short breaths between them
+        assert merged.audio.size == int((4 + 3 + 5 + 2 * 0.15) * 16_000)
+        assert p._segments.empty()
+        assert p.metrics.snapshot()["merged_segments"] == 2
+
+    def test_keeping_up_changes_nothing(self, cfg):
+        p = Pipeline(cfg)
+        seg = _seg(4.0, 0, 0.0)
+        merged, stop = p._merge_backlog(seg)
+        assert merged is seg and not stop
+
+    def test_it_never_exceeds_whispers_window(self, cfg):
+        p = Pipeline(cfg)
+        p._segments.put(_seg(10.0, 1, 12.0))
+        p._segments.put(_seg(10.0, 2, 22.0))
+        p._segments.put(_seg(10.0, 3, 32.0))
+
+        merged, _ = p._merge_backlog(_seg(10.0, 0, 0.0))
+        assert merged.audio.size / 16_000 <= cfg.audio.merge_backlog_s
+        # what did not fit waits at the front, in order
+        leftover = p._segments.get_nowait()
+        assert leftover.index == 2, "order was lost putting a segment back"
+
+    def test_stop_is_honoured_mid_merge(self, cfg):
+        p = Pipeline(cfg)
+        p._segments.put(_seg(3.0, 1, 4.0))
+        p._segments.put(None)
+        merged, stop = p._merge_backlog(_seg(3.0, 0, 0.0))
+        assert stop, "the Stop sentinel was swallowed"
+        assert merged.end_s == 7.0, "the segment before Stop was not kept"
+
+    def test_it_can_be_switched_off(self, cfg):
+        cfg.audio.merge_backlog_s = 0
+        p = Pipeline(cfg)
+        p._segments.put(_seg(3.0, 1, 4.0))
+        seg = _seg(3.0, 0, 0.0)
+        merged, _ = p._merge_backlog(seg)
+        assert merged is seg and p._segments.qsize() == 1
+
+
+class TestConcurrentTranslation:
+    """Translation runs beside transcription, not after it.
+
+    On CPU a translation took longer than the transcription it followed, and
+    the next sentence's English caption waited for it.
+    """
+
+    def _run(self, cfg, concurrent: bool):
+        cfg.translate.concurrent = concurrent
+        p = Pipeline(cfg)
+        seen = []
+        original = p.bus.publish
+
+        def tap(kind, **data):
+            seen.append(kind)
+            return original(kind, **data)
+
+        p.bus.publish = tap
+        p.load_models()
+        p.start()
+        deadline = time.time() + 20
+        while time.time() < deadline and len(p.captions) < 3:
+            time.sleep(0.25)
+        notes = p.stop()
+        return p, seen, notes
+
+    def test_every_caption_still_gets_its_translation(self, cfg):
+        p, seen, _ = self._run(cfg, concurrent=True)
+        assert len(p.captions) >= 3
+        assert seen.count(ev.TRANSLATION) == seen.count(ev.CAPTION), (
+            "a translation was lost when it moved to its own thread"
+        )
+
+    def test_translations_land_before_the_notes_are_written(self, cfg):
+        p, _, notes = self._run(cfg, concurrent=True)
+        assert notes is not None
+        assert all(r.translation is not None for r in p.captions), (
+            "Stop wrote the notes before the translation thread drained"
+        )
+
+    def test_the_old_serial_path_still_works(self, cfg):
+        p, seen, _ = self._run(cfg, concurrent=False)
+        assert seen.count(ev.TRANSLATION) == seen.count(ev.CAPTION)

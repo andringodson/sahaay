@@ -152,3 +152,79 @@ class TestLiveBuild:
         js = (WEB / "static" / "live.js").read_text(encoding="utf-8")
         for pattern in ("FormData", "uploadAudio", "audio/wav"):
             assert pattern not in js, f"live.js references {pattern}"
+
+
+class TestLivePerformance:
+    """The browser build's speed fixes, pinned so they cannot quietly regress.
+
+    Each of these was measured with scripts/bench_live.py before it was kept;
+    these tests only guard that the mechanism is still there.
+    """
+
+    def _js(self) -> str:
+        return (WEB / "static" / "live.js").read_text(encoding="utf-8")
+
+    def test_the_model_starts_loading_when_the_page_opens(self):
+        """Cold, Start used to take 55 s to become 'listening'."""
+        js = self._js()
+        handler = js[js.index('addEventListener("DOMContentLoaded"'):]
+        assert "loadModel()" in handler, "Whisper is no longer preloaded on page open"
+
+    def test_a_backlog_is_merged_not_dropped(self):
+        """Whisper's encoder pays for 30 s whatever it is given."""
+        js = self._js()
+        match = re.search(r"MERGE_MAX_S\s*=\s*([\d.]+)", js)
+        assert match, "the merge limit is gone"
+        assert float(match.group(1)) < 30, "a merged call must fit Whisper's 30 s window"
+
+    def test_speech_onset_keeps_pre_roll(self):
+        """An energy gate fires after the first consonant of a word."""
+        assert re.search(r"PREROLL_FRAMES\s*=\s*\d+", self._js())
+
+    def test_the_site_is_cross_origin_isolated(self):
+        """Without isolation WebAssembly gets one thread and one core."""
+        cfg = json.loads((REPO_ROOT / "vercel.json").read_text(encoding="utf-8"))
+        headers = {
+            h["key"]: h["value"]
+            for rule in cfg["headers"] if rule["source"] == "/(.*)"
+            for h in rule["headers"]
+        }
+        assert headers.get("Cross-Origin-Opener-Policy") == "same-origin"
+        # credentialless, not require-corp: huggingface.co sends no
+        # Cross-Origin-Resource-Policy header, so require-corp would block
+        # the model weights and the page would never caption.
+        assert headers.get("Cross-Origin-Embedder-Policy") == "credentialless"
+
+    def test_isolation_comes_with_blob_scripts_or_nothing_captions(self):
+        """The combination that would have shipped a dead page.
+
+        Isolation makes ONNX Runtime pick its multi-threaded build, which
+        loads its worker module from a blob: URL. Without blob: in script-src
+        that import is refused and the page reports "no available backend
+        found" - on every Chrome and Firefox visitor, since those are the
+        browsers that honour the isolation header. Safari would have worked,
+        which is the only reason it might not have been noticed.
+
+        Caught by scripts/bench_live.py before it was deployed.
+        """
+        cfg = json.loads((REPO_ROOT / "vercel.json").read_text(encoding="utf-8"))
+        headers = {h["key"]: h["value"] for r in cfg["headers"] for h in r["headers"]}
+        if "Cross-Origin-Embedder-Policy" in headers:
+            script_src = next(
+                d for d in headers["Content-Security-Policy"].split(";")
+                if d.strip().startswith("script-src")
+            )
+            assert "blob:" in script_src.split(), (
+                "cross-origin isolation without blob: in script-src breaks threaded WASM"
+            )
+
+    def test_isolation_did_not_open_the_policy_up(self):
+        """Threads needed new headers, not a looser CSP."""
+        cfg = json.loads((REPO_ROOT / "vercel.json").read_text(encoding="utf-8"))
+        csp = next(
+            h["value"] for rule in cfg["headers"] for h in rule["headers"]
+            if h["key"] == "Content-Security-Policy"
+        )
+        assert "form-action 'none'" in csp
+        connect = next(d for d in csp.split(";") if d.strip().startswith("connect-src"))
+        assert " * " not in f" {connect} ", "connect-src must not allow posting anywhere"

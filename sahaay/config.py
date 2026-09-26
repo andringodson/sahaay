@@ -60,6 +60,12 @@ class AudioConfig:
     silence_flush_ms: int = 700
     min_segment_s: float = 1.0
     max_segment_s: float = 12.0
+    # When transcription falls behind, merge queued segments into one call
+    # up to this length instead of transcribing each separately. Whisper's
+    # encoder processes a fixed 30 s window whatever it is given, so two
+    # queued 5 s sentences cost two encoder passes apart and one together.
+    # Keeping up, the queue holds one segment and nothing merges. 0 disables.
+    merge_backlog_s: float = 27.0
 
 
 @dataclass
@@ -102,6 +108,10 @@ class TranslateConfig:
     )
     target_language: str = "hi"
     max_tokens: int = 256
+    # Translate on its own thread, so the next sentence's English caption
+    # does not wait for this sentence's translation. English is what is read
+    # live; the translation arrives underneath it a moment later either way.
+    concurrent: bool = True
 
 
 @dataclass

@@ -39,6 +39,16 @@
   const MIN_SEGMENT_S = 1.0;
   const MAX_SEGMENT_S = 12.0;
   const SPEECH_RMS = 0.012;          // energy gate; Silero is not worth 2 MB here
+  const PREROLL_FRAMES = 10;         // 320 ms kept from before speech starts
+
+  // Whisper's encoder always processes a full 30 s window, whatever length
+  // of audio it is given - so two 3 s sentences cost two encoder passes, and
+  // the same six seconds as one call cost one. When inference falls behind,
+  // merging the backlog is nearly free throughput; dropping it, which this
+  // did before, threw sentences away to save work that merging avoids.
+  const MERGE_MAX_S = 27;            // stay inside the 30 s window
+  const MERGE_GAP_S = 0.15;          // a breath between merged sentences
+  const HARD_BACKLOG = 8;            // only past this is anything dropped
 
   const L = {
     socket: null,
@@ -59,6 +69,35 @@
     queue: [],
     busy: false,
     levelSentAt: 0,
+    pre: [],
+  };
+
+  // Read-only timings, for scripts/bench_live.py and for anyone opening the
+  // console. Changing nothing; measuring everything the visitor feels:
+  // how long Start takes to become "listening", how long each caption took,
+  // and how many segments were dropped because inference fell behind.
+  const METRICS = { clickAt: 0, readyAt: 0, captions: [], dropped: 0, merged: 0, threads: 0 };
+  window.sahaayLive = METRICS;
+
+  // Inference alone, on a clip the caller supplies, N times. The full-lecture
+  // benchmark measures what a visitor feels, but on a laptop in use it is
+  // too noisy to attribute a speed change to one cause; this isolates the
+  // model call. Used by scripts/bench_live.py --inference.
+  window.sahaayBench = async function (samples, runs) {
+    await loadModel();
+    const audio = Float32Array.from(samples);
+    const times = [];
+    for (let i = 0; i < runs; i++) {
+      const t = performance.now();
+      await L.transcriber(audio, { return_timestamps: false });
+      times.push(performance.now() - t);
+    }
+    return {
+      times,
+      threads: METRICS.threads,
+      isolated: self.crossOriginIsolated === true,
+      backend: L.backend,
+    };
   };
 
   /* ---------- talking to app.js ---------- */
@@ -257,8 +296,20 @@
     }
 
     const loud = rms > SPEECH_RMS;
-    if (loud) {
+    if (loud && !L.speaking) {
+      // Speech onset. An energy gate fires late - the consonant that starts
+      // a word is quieter than the vowel after it - so without this the
+      // first word of a caption was sometimes lost ("morning everyone",
+      // "matrix is a linear transformation"). The desktop segmenter keeps
+      // 200 ms of pre-roll for the same reason; this keeps 320.
       L.speaking = true;
+      for (const f of L.pre) {
+        L.buffer.push(f);
+        L.bufferLen += f.length;
+      }
+      L.pre = [];
+    }
+    if (loud) {
       L.silentFor = 0;
     } else if (L.speaking) {
       L.silentFor += (frame.length / RATE) * 1000;
@@ -267,6 +318,9 @@
     if (L.speaking) {
       L.buffer.push(frame);
       L.bufferLen += frame.length;
+    } else {
+      L.pre.push(frame);
+      if (L.pre.length > PREROLL_FRAMES) L.pre.shift();
     }
 
     const longEnough = L.bufferLen >= MIN_SEGMENT_S * RATE;
@@ -299,25 +353,50 @@
   async function drain() {
     if (L.busy || !L.queue.length) return;
     L.busy = true;
-    // Newest first would reorder the transcript; a live captioner stays in
-    // order and drops the oldest under pressure, the way the pipeline does.
-    while (L.queue.length > 3) L.queue.shift();
+    // Only an absurd backlog loses anything. Below it, see merge below.
+    while (L.queue.length > HARD_BACKLOG) {
+      L.queue.shift();
+      METRICS.dropped += 1;
+    }
 
-    const audio = L.queue.shift();
+    // Behind? Take the whole backlog in one call. The encoder pays for 30 s
+    // either way, so this turns "falling further behind" into "a slightly
+    // longer caption, sooner". Keeping up, the queue holds one item and
+    // nothing merges, so latency is untouched when there is headroom.
+    let audio = L.queue.shift();
+    const gap = new Float32Array(Math.round(MERGE_GAP_S * RATE));
+    while (
+      L.queue.length &&
+      audio.length + gap.length + L.queue[0].length <= MERGE_MAX_S * RATE
+    ) {
+      const next = L.queue.shift();
+      const joined = new Float32Array(audio.length + gap.length + next.length);
+      joined.set(audio, 0);
+      joined.set(gap, audio.length);
+      joined.set(next, audio.length + gap.length);
+      audio = joined;
+      METRICS.merged += 1;
+    }
     const index = L.index++;
     emit({ kind: "partial", text: "…", index });
 
     const started = performance.now();
     try {
-      const out = await L.transcriber(audio, {
-        chunk_length_s: 30,
-        return_timestamps: false,
-      });
+      // No chunk_length_s: that routes the call through the long-audio
+      // chunking path, and a segment here is never longer than MERGE_MAX_S,
+      // which already fits Whisper's window whole.
+      const out = await L.transcriber(audio, { return_timestamps: false });
       const text = (out && out.text ? out.text : "").trim();
       const ms = performance.now() - started;
       const seconds = audio.length / RATE;
 
       if (text && !/^[\s.]*$/.test(text)) {
+        METRICS.captions.push({
+          text,
+          at: performance.now(),
+          latency_ms: Math.round(ms),
+          audio_s: Number(seconds.toFixed(2)),
+        });
         emit({
           kind: "caption",
           index,
@@ -357,7 +436,22 @@
     }
   }
 
-  async function loadModel() {
+  // One load, shared. The page starts it the moment it opens, so the minute
+  // a first-time visitor used to wait after pressing Start - measured at
+  // 55 s cold - is spent while they read the banner instead. Start then
+  // awaits the same promise and is instant if it has finished.
+  let modelPromise = null;
+  function loadModel() {
+    if (!modelPromise) {
+      modelPromise = loadModelOnce().catch((err) => {
+        modelPromise = null;   // let a retry try again
+        throw err;
+      });
+    }
+    return modelPromise;
+  }
+
+  async function loadModelOnce() {
     if (L.transcriber) return;
 
     status("fetching Whisper (about 80 MB, cached after this)…");
@@ -365,6 +459,16 @@
 
     const { pipeline, env } = await import(/* @vite-ignore */ TRANSFORMERS);
     env.allowLocalModels = false;
+
+    // Threads. WebAssembly is single-threaded unless the page is
+    // cross-origin isolated, which vercel.json now makes it. With isolation
+    // ONNX Runtime can spread one inference across cores; without it, it
+    // uses one and the rest of the CPU sits idle while captions fall behind.
+    const wasm = env.backends && env.backends.onnx && env.backends.onnx.wasm;
+    if (wasm && self.crossOriginIsolated) {
+      wasm.numThreads = Math.max(1, Math.min(8, (navigator.hardwareConcurrency || 4) - 1));
+    }
+    METRICS.threads = (wasm && wasm.numThreads) || 1;
 
     const onProgress = (p) => {
       if (progress && p && p.status === "progress" && p.total) {
@@ -384,8 +488,22 @@
     // ERR: [webgpu]". Probing first means one decision, made correctly.
     L.backend = (await webgpuAvailable()) ? "webgpu" : "wasm";
 
-    // Only the precision falls back. q8 is the safe floor on both.
-    const dtypes = L.backend === "webgpu" ? ["q4", "q8"] : ["q8", "fp32"];
+    // Precision per backend, chosen by measurement (scripts/bench_live.py,
+    // the full lecture, same machine):
+    //
+    //   WebGPU, q4 everywhere           RTF 0.78   WER 3.4%
+    //   WebGPU, fp32 encoder + q4 dec   RTF 0.46   WER 1.1%   <- used
+    //   WASM x8, q8                     RTF 0.48   WER 2.2-2.8%   <- used
+    //   WASM x8, fp32 encoder + q8 dec  RTF 0.52   WER 3.9%
+    //
+    // A 4-bit encoder is slow on the GPU as well as lossy - dequantising it
+    // costs more than it saves - while on the CPU int8 is the fast path and
+    // fp32 only adds download. The WER spread across all four is two to
+    // five words in 180, so the speed column is the one to trust; none of
+    // them lost a technical term. q8 is the safe floor if a split fails.
+    const dtypes = L.backend === "webgpu"
+      ? [{ encoder_model: "fp32", decoder_model_merged: "q4" }, "q8"]
+      : ["q8", "fp32"];
     let failure = null;
     for (const dtype of dtypes) {
       try {
@@ -403,9 +521,11 @@
     if (progress) progress.style.width = "100%";
     status("warming up…");
     await L.transcriber(new Float32Array(RATE));   // pay graph setup before the lecture
+    if (!L.running) status("ready — press Start");
   }
 
   async function start() {
+    METRICS.clickAt = performance.now();
     await loadModel();
 
     L.stream = await openStream(sourceKind());
@@ -451,6 +571,7 @@
 
     L.running = true;
     reset();
+    METRICS.readyAt = performance.now();
     status("listening");
     emit({ kind: "status", running: true, device: device() });
   }
@@ -492,6 +613,14 @@
   document.addEventListener("DOMContentLoaded", () => {
     addSourcePicker();
     loadGlossary();
+
+    // Start fetching and warming Whisper now, not on Start. A visitor
+    // spends the first half-minute reading the banner; this spends it
+    // downloading. Failures surface when Start awaits the same promise.
+    loadModel().catch((err) => {
+      console.warn("preload failed; Start will retry", err);
+      status("");
+    });
 
     const empty = document.getElementById("empty");
     if (empty) {

@@ -124,3 +124,56 @@ class TestSegmenter:
                 out += seg.push(audio[i : i + size])
                 i += size
         assert len(out) >= 1
+
+
+class TestForcedCut:
+    """A lecturer who never pauses for 700 ms is normal, not an edge case.
+
+    The 12 s cap used to cut wherever the clock landed, usually inside a
+    word, and a comment claimed the tail was carried forward when it was
+    not - so the split word was lost from both captions. The cut now moves
+    to the nearest gap between words, and the remainder starts the next
+    segment.
+    """
+
+    def test_the_cut_lands_in_the_gap_between_words(self):
+        # 11.2 s of speech, a 60 ms breath, then more speech: the only quiet
+        # place near the 12 s cap is the breath.
+        seg = make()
+        seg.push(silence(0.3))
+        audio = np.concatenate([speech(11.2), silence(0.06), speech(8.0)])
+        out = seg.push(audio)
+        assert out, "a 19 s run of speech was never cut"
+
+        first = out[0]
+        # The pre-roll pads a little before the speech; the cut should sit at
+        # the breath, i.e. about 11.2 s of speech in, not at the 12 s cap.
+        assert 10.9 <= first.duration <= 11.8, (
+            f"cut at {first.duration:.2f}s - expected the breath near 11.2s"
+        )
+
+    def test_nothing_is_lost_or_repeated_across_a_forced_cut(self):
+        seg = make()
+        seg.push(silence(0.3))
+        body = speech(26.0)
+        out = seg.push(body)
+        tail = seg.finalize()
+        segments = out + ([tail] if tail is not None else [])
+
+        emitted = sum(s.audio.size for s in segments)
+        # Everything spoken comes back out once: the pre-roll adds a few
+        # frames of room tone before the first word, never less than the
+        # speech itself and never a second copy of any of it.
+        assert body.size <= emitted <= body.size + int(0.3 * SR), (
+            f"{emitted / SR:.2f}s came out of {body.size / SR:.2f}s of speech"
+        )
+
+    def test_segment_times_join_up_after_a_cut(self):
+        seg = make()
+        seg.push(silence(0.3))
+        out = seg.push(speech(26.0))
+        assert len(out) >= 2
+        for a, b in zip(out, out[1:], strict=False):
+            assert abs(b.start_s - a.end_s) < 0.05, (
+                f"gap or overlap between segments: {a.end_s:.2f} -> {b.start_s:.2f}"
+            )

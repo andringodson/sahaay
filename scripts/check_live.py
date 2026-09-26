@@ -25,8 +25,9 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import functools
 import http.server
+import json
+import re
 import socket
 import threading
 import wave
@@ -43,12 +44,47 @@ def free_port() -> int:
         return s.getsockname()[1]
 
 
+def vercel_headers() -> list[tuple[re.Pattern, list[tuple[str, str]]]]:
+    """The response headers vercel.json declares, as (path pattern, headers).
+
+    The content-security policy and the cross-origin isolation headers only
+    exist on the deployment, and both change what a page can do: the first
+    decides whether the runtime may load at all, the second whether WASM
+    gets threads. A local server that omits them tests a different page.
+    """
+    cfg = json.loads((REPO_ROOT / "vercel.json").read_text(encoding="utf-8"))
+    rules = []
+    for rule in cfg.get("headers", []):
+        pattern = re.compile("^" + rule["source"] + "$")
+        rules.append((pattern, [(h["key"], h["value"]) for h in rule.get("headers", [])]))
+    return rules
+
+
 @contextlib.contextmanager
-def serve(directory: Path):
+def serve(directory: Path, production_headers: bool = True):
+    """Serve web/ locally, sending the same headers Vercel would."""
+    rules = vercel_headers() if production_headers else []
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *a, **k):
+            super().__init__(*a, directory=str(directory), **k)
+
+        def log_message(self, *a, **k):  # noqa: ARG002
+            # Assigning log_message on a functools.partial - what this used
+            # to do - sets an attribute nobody reads, which is why every run
+            # printed a request log. A subclass actually overrides it.
+            pass
+
+        def end_headers(self):
+            path = self.path.split("?", 1)[0]
+            for pattern, headers in rules:
+                if pattern.match(path):
+                    for key, value in headers:
+                        self.send_header(key, value)
+            super().end_headers()
+
     port = free_port()
-    handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(directory))
-    handler.log_message = lambda *a, **k: None  # type: ignore[method-assign]
-    httpd = http.server.ThreadingHTTPServer(("127.0.0.1", port), handler)
+    httpd = http.server.ThreadingHTTPServer(("127.0.0.1", port), Handler)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     try:
         yield f"http://127.0.0.1:{port}"

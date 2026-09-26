@@ -49,6 +49,7 @@ class Metrics:
         self._lock = threading.Lock()
         self._audio_seconds = 0.0
         self._input_level = 0.0
+        self._merges = 0
         self.started = time.time()
 
     def record(self, stage: str, ms: float) -> None:
@@ -59,6 +60,11 @@ class Metrics:
     def add_audio(self, seconds: float) -> None:
         with self._lock:
             self._audio_seconds += seconds
+
+    def add_merges(self, count: int) -> None:
+        """Segments folded into a neighbour because transcription was behind."""
+        with self._lock:
+            self._merges += count
 
     def set_level(self, rms: float) -> None:
         """Most recent input loudness, so /api/status can answer 'is it
@@ -113,6 +119,7 @@ class Metrics:
             "uptime_s": round(time.time() - self.started, 1),
             "audio_seconds": round(self._audio_seconds, 1),
             "input_level": round(self._input_level, 5),
+            "merged_segments": self._merges,
             "realtime_factor": round(self.realtime_factor, 3),
             "stages": [s.to_dict() for s in self.all_stats()],
         }
@@ -123,4 +130,5 @@ class Metrics:
             self._counts.clear()
             self._audio_seconds = 0.0
             self._input_level = 0.0
+            self._merges = 0
             self.started = time.time()

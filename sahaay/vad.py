@@ -186,26 +186,65 @@ class Segmenter:
             return self._flush(t_now, forced=too_long)
         return None
 
+    # How far back from a forced cut to look for a quieter place to cut.
+    CUT_SEARCH_S = 1.5
+
+    def _quietest_cut(self, audio: np.ndarray) -> int:
+        """Sample index of the quietest 32 ms frame near the end of ``audio``.
+
+        A lecturer who talks for twelve seconds without a 700 ms pause is
+        normal, not an edge case, and the cap then cuts wherever the clock
+        lands - usually inside a word, so both halves transcribe it wrong.
+        The gaps between words are short but real: the quietest frame in the
+        last second and a half is almost always one of them.
+        """
+        rate = self.audio_cfg.sample_rate
+        floor = int(self.audio_cfg.min_segment_s * rate)
+        start = max(floor, audio.size - int(self.CUT_SEARCH_S * rate))
+        best_at, best_rms = audio.size, float("inf")
+        for at in range(start, audio.size - FRAME_SAMPLES + 1, FRAME_SAMPLES):
+            frame = audio[at : at + FRAME_SAMPLES]
+            rms = float(np.sqrt(np.mean(np.square(frame))))
+            if rms < best_rms:
+                best_at, best_rms = at + FRAME_SAMPLES // 2, rms
+        return best_at
+
     def _flush(self, t_now: float, forced: bool = False) -> Segment | None:
         audio = self._speech
-        self._speech = np.empty(0, dtype=np.float32)
-        self._in_speech = False
+        carry = np.empty(0, dtype=np.float32)
+
+        if forced:
+            # The old comment here said the tail was carried forward. It was
+            # not: the cut landed wherever max_segment_s did, and whatever
+            # word it split was lost from both captions. Now the cut moves to
+            # the nearest gap between words and the remainder starts the next
+            # segment, so nothing is dropped and nothing is said twice.
+            cut = self._quietest_cut(audio)
+            audio, carry = audio[:cut], audio[cut:].copy()
+
+        rate = self.audio_cfg.sample_rate
+        end_s = t_now - carry.size / rate
+        start_s = self._segment_start
+
         self._silence_frames = 0
         self._pad.clear()
+        if carry.size:
+            self._speech = carry
+            self._in_speech = True
+            self._segment_start = end_s
+        else:
+            self._speech = np.empty(0, dtype=np.float32)
+            self._in_speech = False
 
-        duration = audio.size / self.audio_cfg.sample_rate
+        duration = audio.size / rate
         if duration < self.audio_cfg.min_segment_s:
             # Too short to be speech - a cough, a chair, a keystroke.
             return None
 
-        seg = Segment(
-            audio=audio, start_s=self._segment_start, end_s=t_now, index=self._index
-        )
+        seg = Segment(audio=audio, start_s=start_s, end_s=end_s, index=self._index)
         self._index += 1
         if forced:
-            # A forced cut lands mid-sentence; carry the tail forward so the
-            # next segment has context and the join reads naturally.
-            log.debug("forced segment cut at %.1fs", duration)
+            log.debug("forced cut at %.1fs, %.2fs carried forward", duration, carry.size / rate)
         return seg
 
     def finalize(self) -> Segment | None:
