@@ -325,3 +325,60 @@ class TestSeedGlossaryLookup:
             "<transcript>Diagonalization is the goal.</transcript>"
         )
         assert "install the language model" not in result.text
+
+
+class TestGlossaryThrottle:
+    """On CPU the glossary model shares cores with the captions.
+
+    The throttle is a thread cap passed through onnxruntime-genai's config
+    overlay. The first version also sent "config_entries", which genai 0.11
+    rejects - and because a rejected overlay falls back to loading the model
+    unthrottled, the cap silently did nothing. These run without the model.
+    """
+
+    class _FakeOg:
+        # Mirrors onnxruntime-genai 0.11: unknown session_options keys throw.
+        ALLOWED = {"intra_op_num_threads", "inter_op_num_threads"}
+
+        def __init__(self):
+            self.overlays = []
+            self.models = []
+            outer = self
+
+            class Config:
+                def __init__(self, path):
+                    self.path = path
+
+                def overlay(self, text):
+                    import json as _json
+
+                    opts = _json.loads(text)["model"]["decoder"]["session_options"]
+                    unknown = set(opts) - outer.ALLOWED
+                    if unknown:
+                        raise RuntimeError(f"Unknown value {sorted(unknown)}")
+                    outer.overlays.append(opts)
+
+            self.Config = Config
+
+        def Model(self, arg):  # noqa: N802 - mirrors the real API
+            self.models.append(arg)
+            return object()
+
+    def test_the_cap_reaches_the_runtime(self):
+        from pathlib import Path
+
+        from sahaay.llm import GenAiLlm
+
+        og = self._FakeOg()
+        GenAiLlm._load(og, Path("m"), cpu_threads=2)
+        assert og.overlays, "the overlay was rejected and the model loaded unthrottled"
+        assert og.overlays[0]["intra_op_num_threads"] == 2
+
+    def test_no_cap_on_the_npu(self):
+        from pathlib import Path
+
+        from sahaay.llm import GenAiLlm
+
+        og = self._FakeOg()
+        GenAiLlm._load(og, Path("m"), cpu_threads=0)
+        assert not og.overlays, "the NPU path must load exactly as it always did"

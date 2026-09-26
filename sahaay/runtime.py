@@ -346,10 +346,7 @@ class SessionFactory:
             )
 
         provider = provider or self._chosen
-        so = self._ort.SessionOptions()
-        so.graph_optimization_level = self._ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-        if self.cfg.intra_op_threads:
-            so.intra_op_num_threads = self.cfg.intra_op_threads
+        so = self.session_options()
 
         providers = [provider]
         provider_options = [self._provider_options(provider)]
@@ -372,6 +369,22 @@ class SessionFactory:
             log.warning("%s fell back from %s to %s", model_path.name, provider, actual)
         log.info("loaded %s on %s", model_path.name, actual)
         return sess
+
+
+    def session_options(self):  # noqa: ANN201 - an onnxruntime type
+        so = self._ort.SessionOptions()
+        so.graph_optimization_level = self._ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        if self.cfg.intra_op_threads:
+            so.intra_op_num_threads = self.cfg.intra_op_threads
+        if not self.cfg.thread_spinning:
+            # ONNX Runtime's worker threads spin-wait between operators by
+            # default, which is the right call for one model owning a machine
+            # and the wrong one here: Whisper, NLLB and the glossary model run
+            # at the same time, and each one's idle threads burn the cycles
+            # the others are waiting for. See docs/TUNING.md for the numbers.
+            so.add_session_config_entry("session.intra_op.allow_spinning", "0")
+            so.add_session_config_entry("session.inter_op.allow_spinning", "0")
+        return so
 
 
 class NullSessionFactory:

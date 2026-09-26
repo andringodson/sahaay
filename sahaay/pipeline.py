@@ -116,6 +116,7 @@ class Pipeline:
             mock=self.cfg.mock,
             candidates=self.cfg.glossary.candidates,
             npu_active=self.factory.npu_active,
+            cpu_threads=self.cfg.glossary.cpu_threads,
         )
 
         self._glossary = GlossaryWorker(

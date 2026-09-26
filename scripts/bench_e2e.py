@@ -49,6 +49,8 @@ def main() -> int:
     ap.add_argument("--no-glossary", action="store_true", help="measure without the LLM running")
     ap.add_argument("--serial", action="store_true", help="translate inline, the old way")
     ap.add_argument("--no-merge", action="store_true", help="never merge a backlog, the old way")
+    ap.add_argument("--spin", action="store_true", help="let ORT threads spin-wait (the old default)")
+    ap.add_argument("--llm-threads", type=int, help="glossary CPU threads; 0 = unthrottled")
     ap.add_argument("--label", default="")
     ap.add_argument("--json", type=Path)
     args = ap.parse_args()
@@ -66,6 +68,10 @@ def main() -> int:
         cfg.translate.concurrent = False
     if args.no_merge:
         cfg.audio.merge_backlog_s = 0
+    if args.spin:
+        cfg.runtime.thread_spinning = True
+    if args.llm_threads is not None:
+        cfg.glossary.cpu_threads = args.llm_threads
 
     duration = load_wav(args.wav, cfg.audio.sample_rate).size / cfg.audio.sample_rate
 

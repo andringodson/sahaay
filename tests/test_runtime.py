@@ -151,3 +151,29 @@ class TestNullFactory:
 
     def test_create_factory_falls_back_in_mock_mode(self):
         assert create_factory(mock=True) is not None
+
+
+class TestThreadSpinning:
+    """Three models share one CPU; idle spinning threads starve the others.
+
+    ONNX Runtime spin-waits between operators by default. That suits one
+    model owning a machine. Here Whisper, NLLB and the glossary model run at
+    once, and each one's idle threads burn cycles the others are waiting for.
+    """
+
+    def test_spinning_is_off_by_default(self):
+        from sahaay.runtime import SessionFactory
+
+        so = SessionFactory().session_options()
+        assert so.get_session_config_entry("session.intra_op.allow_spinning") == "0"
+        assert so.get_session_config_entry("session.inter_op.allow_spinning") == "0"
+
+    def test_it_can_be_turned_back_on(self):
+        from sahaay.runtime import SessionFactory
+
+        cfg = RuntimeConfig()
+        cfg.thread_spinning = True
+        so = SessionFactory(cfg).session_options()
+        # Not set at all means ORT's own default, which is to spin.
+        with pytest.raises(Exception):  # noqa: B017 - ORT raises a plain RuntimeError-ish type
+            so.get_session_config_entry("session.intra_op.allow_spinning")

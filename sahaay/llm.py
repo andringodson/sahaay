@@ -56,7 +56,7 @@ class GenAiLlm(LlmBackend):
 
     name = "onnxruntime-genai"
 
-    def __init__(self, model_dir: Path):
+    def __init__(self, model_dir: Path, cpu_threads: int = 0):
         import onnxruntime_genai as og  # type: ignore
 
         # Recorded so the benchmark can name what it measured. Without it the
@@ -65,14 +65,49 @@ class GenAiLlm(LlmBackend):
         self.model_dir = Path(model_dir)
         self._og = og
         t0 = time.perf_counter()
-        self._model = og.Model(str(model_dir))
+        self._model = self._load(og, model_dir, cpu_threads)
         self._tokenizer = og.Tokenizer(self._model)
         self._chat_template = hasattr(self._tokenizer, "apply_chat_template")
         self.available = True
+        self.cpu_threads = cpu_threads
         # One generation at a time: the NPU has a single HTP context and
         # concurrent generate() calls would serialise unpredictably anyway.
         self._lock = threading.Lock()
         log.info("LLM loaded from %s in %.1fs", model_dir.name, time.perf_counter() - t0)
+
+    @staticmethod
+    def _load(og, model_dir: Path, cpu_threads: int):  # noqa: ANN001, ANN205
+        """Load the model, throttled when it shares a CPU with the captions.
+
+        GlossaryConfig has always said the glossary runs "at low priority"
+        and that on CPU "we throttle hard so captions never stall". Nothing
+        did: the model claimed every core, and so did Whisper and NLLB,
+        running at the same moment. Capping its threads is that throttle.
+
+        On the NPU none of this applies - cpu_threads is 0 and the model loads
+        exactly as it did.
+        """
+        if not cpu_threads:
+            return og.Model(str(model_dir))
+        import json
+
+        try:
+            # Thread counts only. onnxruntime-genai 0.11 rejects
+            # "config_entries" in session_options outright ("Unknown value"),
+            # so the spin-wait switch the caption models get cannot be passed
+            # here - and the whole overlay failing took the thread cap down
+            # with it, silently, until a benchmark log showed the fallback.
+            config = og.Config(str(model_dir))
+            config.overlay(json.dumps({"model": {"decoder": {"session_options": {
+                "intra_op_num_threads": cpu_threads,
+                "inter_op_num_threads": 1,
+            }}}}))
+            return og.Model(config)
+        except Exception as exc:  # noqa: BLE001
+            # An older runtime without overlay() or config_entries still gets
+            # a working glossary, just an unthrottled one.
+            log.warning("could not throttle the glossary model (%s); loading it plainly", exc)
+            return og.Model(str(model_dir))
 
     # Llama 3 chat format, used when the runtime cannot apply the model's own
     # template. Instruction-tuned models only follow instructions inside this
@@ -355,6 +390,7 @@ def create_llm(
     mock: bool = False,
     candidates: list[str] | None = None,
     npu_active: bool = False,
+    cpu_threads: int = 0,
 ) -> LlmBackend:
     """Walk the degradation ladder and return the best backend available.
 
@@ -375,7 +411,8 @@ def create_llm(
     model_dir = find_genai_model(models_dir / model_id)
     if model_dir is not None:
         try:
-            return GenAiLlm(model_dir)
+            # Throttle only when it shares the CPU with the captions.
+            return GenAiLlm(model_dir, cpu_threads=0 if npu_active else cpu_threads)
         except ImportError:
             log.warning(
                 "onnxruntime-genai not installed; glossary falls back to heuristics.\n"

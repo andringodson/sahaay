@@ -139,6 +139,10 @@ class GlossaryConfig:
     # budget tuned on English output truncates the last entry of every batch.
     # Measured: three Hindi glosses need ~200 tokens, not 160.
     max_new_tokens: int = 256
+    # On CPU the glossary shares cores with the captions, and is meant to
+    # run at low priority. This is that priority: the most threads it may
+    # use. 0 = unthrottled. Ignored on the NPU. Measured in docs/TUNING.md.
+    cpu_threads: int = 2
 
 
 @dataclass
@@ -169,6 +173,10 @@ class RuntimeConfig:
     htp_graph_finalization_optimization_mode: str = "3"
     enable_htp_fp16_precision: bool = True
     intra_op_threads: int = 0  # 0 = let ORT decide
+    # Let ONNX Runtime threads spin-wait between operators. Good for one model
+    # alone; bad for three running concurrently on one CPU, where idle
+    # spinning steals cycles the others need. Measured in docs/TUNING.md.
+    thread_spinning: bool = False
 
 
 @dataclass

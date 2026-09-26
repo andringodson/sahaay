@@ -105,6 +105,27 @@ for slower hardware, not a speed-up measured here.
 chunking path. A segment here is never longer than 27 s, which already fits
 the window whole.
 
+### Verified on the deployment
+
+Local runs send `vercel.json`'s headers now, but the deployment is the page
+people open, so both paths were measured there too:
+
+| sahaay-offline.vercel.app/live | WASM | WebGPU (real GPU) |
+|---|---:|---:|
+| Cross-origin isolated | yes | yes |
+| Start → listening | 0.6 s | 4.4 s |
+| Start → first caption | 4.0 s | 8.5 s |
+| Inference, mean | 2.1 s | 2.2 s |
+| Real-time factor | 0.58 | 0.60 |
+| WER / terms | 3.9 % / 8/8 | 3.9 % / 8/8 |
+
+A little slower than the local runs, which shared the machine with other
+work. WebGPU takes longer to become ready because compiling its shaders
+continues after the download finishes; a visitor who reads the banner first
+does not see it. Note that WER landed at 3.9 % on both paths here, against
+1.1–2.8 % locally - the same few words either way, which is the noise the
+precision table above warns about.
+
 ## The desktop pipeline
 
 Measured by `scripts/bench_e2e.py`: the same 104 s lecture played through
@@ -114,12 +135,12 @@ actually runs on a CPU.
 
 ### Result
 
-| | old | new |
+| | old | new (mean of 3 runs) |
 |---|---:|---:|
-| Start → first caption | 10.5 s | **5.6 s** |
-| Caption lag, mean | 53.3 s | **18.0 s** |
-| Caption lag, worst | 102.9 s | **34.2 s** |
-| Backlog when the lecture ends | 101.3 s | **24.4 s** |
+| Start → first caption | 10.5 s | **4.8 s** |
+| Caption lag, mean | 53.3 s | **13.3 s** (10.3–15.6) |
+| Caption lag, worst | 102.9 s | **23.0 s** (16.4–29.2) |
+| Backlog when the lecture ends | 101.3 s | **18.6 s** (15.2–23.8) |
 | WER | 0.0 % | **0.0 %** |
 | Technical terms kept | 8/8 | **8/8** |
 
@@ -130,10 +151,10 @@ further behind with every sentence and never recovered: by the end of a
 have been unreadable.
 
 The transcript is word-for-word identical. **The trade:** the Hindi
-translation now trails its English caption by 11 s rather than 5 s. English
+translation now trails its English caption by 7 s rather than 5 s. English
 is what is read live; translation catches up at the next pause.
 
-It still lags 18 s on average, because three models share one CPU. That
+It still lags 13 s on average, because three models share one CPU. That
 residue is the NPU argument - [CONCURRENCY.md](CONCURRENCY.md) - and no
 amount of scheduling makes it go away. What scheduling can do is stop a CPU
 machine from falling irrecoverably behind, and it now does.
@@ -155,6 +176,39 @@ and nothing merges. `audio.merge_backlog_s = 0` switches it off.
 
 Both are measured together here; `--serial` and `--no-merge` reproduce the
 old behaviour for comparison.
+
+**Stopping three models fighting over the cores.** ONNX Runtime's threads
+spin-wait between operators by default, which is right for one model alone
+and wrong for three sharing a CPU: a spinning thread holds a core the others
+need. And the glossary model, meant to be the low-priority job, took every
+core it could get. ORT sessions now sleep instead of spinning
+(`runtime.thread_spinning`), and the glossary is held to two threads
+(`glossary.cpu_threads`; ignored on the NPU, where it has its own silicon).
+Measured interleaved - old, new, old, new, old, new - so drift could not
+favour either side:
+
+| | old (spin, unthrottled) | new |
+|---|---:|---:|
+| Transcription per caption | 6,805 ms | **5,412 ms** |
+| Translation per caption | 8,065 ms | **6,346 ms** |
+| Caption lag, mean | 14.1 s | **13.3 s** |
+| Caption lag, worst | 28.8 s | **23.0 s** |
+| Backlog when the lecture ends | 27.1 s | **18.6 s** |
+| Glossary entries written | 11 | 11 |
+
+The glossary lost nothing - it runs in the pauses, and two threads are
+enough to keep up with them - while transcription and translation each got
+a fifth faster. The mean lag moved least, and on its own is within the
+noise: one old run beat one new run on it. The worst case and the tail,
+which is what a reader stuck behind a backlog feels, improved in every pair.
+One old run is excluded: the laptop slept during it (a 57 s mean
+translation, 200 s lag), and it was repeated with the machine held awake.
+
+**A bug the tests caught.** The first version also asked onnxruntime-genai
+to stop the glossary spinning. That key is not one genai accepts, so it
+rejected the whole setting, the loader fell back to an unthrottled model,
+and a log warning was the only trace. `tests/test_llm_output.py` now loads
+it through a stand-in that rejects unknown keys the way genai does.
 
 ## Found along the way
 
@@ -191,6 +245,7 @@ python scripts/bench_live.py --runs 1 --channel chrome     # full lecture, real 
 python scripts/bench_live.py --inference 4 --rounds 3      # threads, isolated
 python scripts/bench_e2e.py                                # desktop pipeline
 python scripts/bench_e2e.py --serial --no-merge            # desktop, the old way
+python scripts/bench_e2e.py --spin --llm-threads 0         # desktop, old threading
 ```
 
 A laptop someone is using is a noisy place to benchmark. One run here
