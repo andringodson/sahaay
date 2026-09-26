@@ -69,8 +69,8 @@ capture and Indian-language translation need the desktop build below.
 No models, no audio device, no Snapdragon hardware:
 
 ```powershell
-git clone https://github.com/andringodson/sahaay
-cd sahaay
+git clone https://github.com/andringodson/Hackathon-SnapdragonAILab
+cd Hackathon-SnapdragonAILab
 powershell -ExecutionPolicy Bypass -File install.ps1
 .\run.bat --mock
 ```

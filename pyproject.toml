@@ -47,8 +47,8 @@ dev = ["pytest>=8.0", "pytest-asyncio>=0.24"]
 sahaay = "sahaay.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/andringodson/sahaay"
-Issues = "https://github.com/andringodson/sahaay/issues"
+Homepage = "https://github.com/andringodson/Hackathon-SnapdragonAILab"
+Issues = "https://github.com/andringodson/Hackathon-SnapdragonAILab/issues"
 
 [tool.setuptools.packages.find]
 include = ["sahaay*"]

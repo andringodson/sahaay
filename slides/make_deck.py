@@ -156,7 +156,7 @@ slide("cover", f"""
   <h2 style="font-family:{HEAD}; font-size:58px; font-weight:400; line-height:1.15; width:1400px">The lecture understands you &mdash; offline</h2>
   <p style="font-size:32px; color:{ON_D_DIM}; width:1280px; line-height:1.45">Live captions, Indian-language translation and a jargon glossary, running entirely on a Snapdragon-powered PC with the network switched off.</p>
   <div style="opacity:0.9">{waveform()}</div>
-  {footer('sahaay-offline.vercel.app  &#183;  github.com/andringodson/sahaay', ON_D_DIM)}
+  {footer('sahaay-offline.vercel.app  &#183;  github.com/andringodson/Hackathon-SnapdragonAILab', ON_D_DIM)}
   <aside>Open with the name and one sentence, not the tech stack. Leave the URL on screen: a judge who wants to check a number can, mid-talk.</aside>
 </section>
 """)
@@ -397,7 +397,7 @@ slide("close", f"""
   {eyebrow('If you remember one sentence', ACCENT_D)}
   <h1 style="font-family:{HEAD}; font-size:78px; font-weight:600; line-height:1.22; letter-spacing:-1px; width:1600px">On a CPU, turning on the glossary makes the captions stop keeping up with the lecturer. That is why this is a <span style="color:{ACCENT_D}">Snapdragon</span> application.</h1>
   <p style="font-size:32px; line-height:1.45; color:{ON_D_DIM}; width:1500px">Everything else &mdash; the accuracy table, the term protection, the degradation ladder &mdash; supports that sentence.</p>
-  {footer('sahaay-offline.vercel.app  &#183;  github.com/andringodson/sahaay  &#183;  MIT', ON_D_DIM)}
+  {footer('sahaay-offline.vercel.app  &#183;  github.com/andringodson/Hackathon-SnapdragonAILab  &#183;  MIT', ON_D_DIM)}
   <aside>Land the sentence, then stop talking. Let the silence do the closing.</aside>
 </section>
 """)
